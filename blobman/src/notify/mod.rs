@@ -98,10 +98,10 @@ pub trait NotificationBackend {
 #[macro_export]
 macro_rules! bm_note {
     ($dest:expr, $( $fmt_args:expr ),*) => {
-        $dest.notify($crate::status::NotificationKind::Note, format_args!($( $fmt_args ),*), None)
+        $dest.notify($crate::notify::NotificationKind::Note, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::status::NotificationKind::Note, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Note, format_args!($( $fmt_args ),*), Some(&$err))
     };
 }
 
@@ -113,10 +113,10 @@ macro_rules! bm_note {
 #[macro_export]
 macro_rules! bm_warning {
     ($dest:expr, $( $fmt_args:expr ),*) => {
-        $dest.notify($crate::status::NotificationKind::Warning, format_args!($( $fmt_args ),*), None)
+        $dest.notify($crate::notify::NotificationKind::Warning, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::status::NotificationKind::Warning, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Warning, format_args!($( $fmt_args ),*), Some(&$err))
     };
 }
 
@@ -129,10 +129,10 @@ macro_rules! bm_warning {
 #[macro_export]
 macro_rules! bm_severe {
     ($dest:expr, $( $fmt_args:expr ),*) => {
-        $dest.notify($crate::status::NotificationKind::Severe, format_args!($( $fmt_args ),*), None)
+        $dest.notify($crate::notify::NotificationKind::Severe, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::status::NotificationKind::Severe, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Severe, format_args!($( $fmt_args ),*), Some(&$err))
     };
 }
 
@@ -146,10 +146,10 @@ macro_rules! bm_severe {
 #[macro_export]
 macro_rules! bm_fatal {
     ($dest:expr, $( $fmt_args:expr ),*) => {
-        $dest.notify($crate::status::NotificationKind::Fatal, format_args!($( $fmt_args ),*), None)
+        $dest.notify($crate::notify::NotificationKind::Fatal, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::status::NotificationKind::Fatal, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Fatal, format_args!($( $fmt_args ),*), Some(&$err))
     };
 }
 
