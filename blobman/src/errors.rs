@@ -47,6 +47,19 @@ macro_rules! ctry {
     }
 }
 
+
+/// Format an error message.
+///
+/// This convenience macro expands into an Err(Error) object of kind
+/// ErrorKind::Msg, and a message formatted using the standard `format!`
+/// machinery.
+#[macro_export]
+macro_rules! err_msg {
+    ($( $fmt_args:expr ),*) => {
+        Err($crate::errors::ErrorKind::Msg(format!($( $fmt_args ),*)).into())
+    }
+}
+
 impl convert::From<Error> for io::Error {
     fn from(err: Error) -> io::Error {
         io::Error::new(io::ErrorKind::Other, format!("{}", err))

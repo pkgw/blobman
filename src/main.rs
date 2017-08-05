@@ -17,8 +17,7 @@ fn inner(matches: ArgMatches, _config: UserConfig, nbe: &mut TermcolorNotificati
     if let Some(fetch_m) = matches.subcommand_matches("fetch") {
         bm_note!(nbe, "fetch");
     } else {
-        bm_fatal!(nbe, "you must specify a subcommand; try \"blobman help\"");
-        return Ok(1)
+        return err_msg!("you must specify a subcommand; try \"blobman help\"");
     }
 
     Ok(0)
