@@ -1,6 +1,14 @@
 // Copyright 2017 Peter Williams and collaborators
 // Licensed under the MIT License.
 
+/*!
+This module implements the error types used by the blobman crate.
+
+It provides a generic, chainable error type using the infrastructure provided
+by the very nice [error-chain](https://docs.rs/error-chain) crate.
+
+*/
+
 use app_dirs;
 use std::{convert, io};
 use toml;
@@ -12,13 +20,26 @@ error_chain! {
     }
 
     foreign_links {
-        AppDirs(app_dirs::AppDirsError);
-        Io(io::Error);
-        TomlDe(toml::de::Error);
+        AppDirs(app_dirs::AppDirsError) #[doc = "An error from the [app_dirs](https://docs.rs/app_dirs) crate"];
+        Io(io::Error) #[doc = "An I/O-related error."];
+        TomlDe(toml::de::Error) #[doc = "An error from the [toml](https://docs.rs/toml) crate."];
     }
 }
 
 
+/// A “chained try” macro.
+///
+/// Attempts an operation that returns a Result and returns its Ok value if
+/// the operation is successful. If not, it returns an Err value that chains
+/// to the Err value that was returned. The Err has an ErrorKind of Msg and
+/// includes explanatory text formatted using the `format!` macro. Example:
+///
+/// ```rust
+/// ctry!(write!(myfile, "hello"); "couldn\'t write to {}", myfile_path);
+/// ```
+///
+/// Note that the operation to be attempted and the arguments to `format!` are
+/// separated by a semicolon within the `ctry!()` parentheses.
 #[macro_export]
 macro_rules! ctry {
     ($op:expr ; $( $chain_fmt_args:expr ),*) => {
