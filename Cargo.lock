@@ -4,7 +4,6 @@ version = "0.1.0"
 dependencies = [
  "blobman 0.1.0",
  "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -68,6 +67,7 @@ dependencies = [
  "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

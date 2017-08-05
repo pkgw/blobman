@@ -16,6 +16,8 @@ expects.
 extern crate app_dirs;
 #[macro_use] extern crate error_chain;
 extern crate sha2;
+extern crate termcolor;
 extern crate toml;
 
-pub mod errors;
+#[macro_use] pub mod notify; // must come first to provide macros for other modules
+#[macro_use] pub mod errors;

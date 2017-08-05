@@ -3,7 +3,6 @@
 
 extern crate blobman;
 extern crate clap;
-extern crate termcolor;
 
 
 fn main() {

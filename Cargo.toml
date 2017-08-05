@@ -21,4 +21,3 @@ doc = false
 [dependencies]
 clap = "^2.26"
 blobman = { version = "0.1.0", path = "blobman" }
-termcolor = "^0.3"
