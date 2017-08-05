@@ -4,7 +4,7 @@
 #[macro_use] extern crate blobman;
 extern crate clap;
 
-use clap::{Arg, ArgMatches, App};
+use clap::{Arg, ArgMatches, App, SubCommand};
 use std::process;
 
 use blobman::config::UserConfig;
@@ -13,8 +13,14 @@ use blobman::notify::{BufferingNotificationBackend, ChatterLevel, NotificationBa
 use blobman::notify::termcolor::TermcolorNotificationBackend;
 
 
-fn inner(_matches: ArgMatches, _config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
-    bm_note!(nbe, "Here we are.");
+fn inner(matches: ArgMatches, _config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+    if let Some(fetch_m) = matches.subcommand_matches("fetch") {
+        bm_note!(nbe, "fetch");
+    } else {
+        bm_fatal!(nbe, "you must specify a subcommand; try \"blobman help\"");
+        return Ok(1)
+    }
+
     Ok(0)
 }
 
@@ -30,6 +36,12 @@ fn main() {
              .help("How much chatter to print when running.")
              .possible_values(&["default", "minimal"])
              .default_value("default"))
+        .subcommand(SubCommand::with_name("fetch")
+                    .about("download and ingest a file")
+                    .arg(Arg::with_name("URL")
+                         .help("The URL to download.")
+                         .required(true)
+                         .index(1)))
         .get_matches ();
 
     let chatter = match matches.value_of("chatter_level").unwrap() {
