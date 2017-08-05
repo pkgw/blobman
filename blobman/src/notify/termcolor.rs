@@ -148,7 +148,7 @@ impl TermcolorNotificationBackend {
 
 
 impl NotificationBackend for TermcolorNotificationBackend {
-    fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<&Error>) {
+    fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>) {
         self.generic_message(kind, None, args);
 
         if let Some(e) = err {

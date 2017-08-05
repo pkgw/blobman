@@ -9,7 +9,7 @@ use std::process;
 
 use blobman::config::UserConfig;
 use blobman::errors::Result;
-use blobman::notify::{ChatterLevel, NotificationBackend};
+use blobman::notify::{BufferingNotificationBackend, ChatterLevel, NotificationBackend};
 use blobman::notify::termcolor::TermcolorNotificationBackend;
 
 
@@ -38,9 +38,14 @@ fn main() {
         _ => unreachable!()
     };
 
-    // Read in the configuration.
+    // Read in the configuration. We want to make it possible to decide
+    // whether to emit colorized output based on a configuration setting,
+    // which means we can't emit notifications just yet; therefore we buffer
+    // them.
 
-    let config = match UserConfig::open() {
+    let mut temp_nbe = BufferingNotificationBackend::new();
+
+    let config = match UserConfig::open(&mut temp_nbe) {
         Ok(c) => c,
         Err(ref e) => {
             // Uh-oh, we couldn't get the configuration. Our main
@@ -48,6 +53,9 @@ fn main() {
             // have yet. If we can't even load the config we might really be
             // in trouble, so it seems safest to keep things simple anyway and
             // just use bare stderr without colorization.
+            //
+            // NOTE: if anything gets logged to temp_nbe, it gets swallowed.
+            eprintln!("fatal: error while reading user configuration file");
             e.dump_uncolorized();
             process::exit(1);
         }
@@ -60,10 +68,11 @@ fn main() {
     // just yet.
 
     let mut nbe = TermcolorNotificationBackend::new(chatter);
+    temp_nbe.drain(&mut nbe);
 
-    // Now that we've got colorized output, we're to pass off to the inner
-    // function ... all so that we can print out the word "error:" in red.
-    // This code parallels various bits of the `error_chain` crate.
+    // Now that we've got colorized output, we're ready to pass off to the
+    // inner function ... all so that we can print out the word "error:" in
+    // red. This code parallels various bits of the `error_chain` crate.
 
     process::exit(match inner(matches, config, &mut nbe) {
         Ok(ret) => ret,

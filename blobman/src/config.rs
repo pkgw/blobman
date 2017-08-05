@@ -12,6 +12,7 @@ use toml;
 
 use errors::Result;
 use io;
+use notify::NotificationBackend;
 
 
 const DEFAULT_CONFIG: &'static str = r#"[[storage]]
@@ -47,7 +48,7 @@ pub enum StorageLocation {
 
 impl UserConfig {
     /// Read the user-level configuration data.
-    pub fn open() -> Result<UserConfig> {
+    pub fn open<B: NotificationBackend>(nbe: &mut B) -> Result<UserConfig> {
         let mut cfg_path = app_root(AppDataType::UserConfig, &::APP_INFO)?;
         cfg_path.push("config.toml");
 
@@ -60,6 +61,7 @@ impl UserConfig {
             None => {
                 let mut f = File::create(&cfg_path)?;
                 write!(f, "{}", DEFAULT_CONFIG)?;
+                bm_note!(nbe, "created configuration file {}", cfg_path.display());
                 toml::from_str(DEFAULT_CONFIG)?
             },
         };

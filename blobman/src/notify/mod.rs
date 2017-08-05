@@ -78,7 +78,7 @@ pub trait NotificationBackend {
     ///
     /// If `err` is not `None`, the information contained in the object should
     /// be reported after the main message.
-    fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<&Error>);
+    fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>);
 }
 
 
@@ -101,7 +101,7 @@ macro_rules! bm_note {
         $dest.notify($crate::notify::NotificationKind::Note, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::notify::NotificationKind::Note, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Note, format_args!($( $fmt_args ),*), Some($err))
     };
 }
 
@@ -116,7 +116,7 @@ macro_rules! bm_warning {
         $dest.notify($crate::notify::NotificationKind::Warning, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::notify::NotificationKind::Warning, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Warning, format_args!($( $fmt_args ),*), Some($err))
     };
 }
 
@@ -132,7 +132,7 @@ macro_rules! bm_severe {
         $dest.notify($crate::notify::NotificationKind::Severe, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::notify::NotificationKind::Severe, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Severe, format_args!($( $fmt_args ),*), Some($err))
     };
 }
 
@@ -149,7 +149,7 @@ macro_rules! bm_fatal {
         $dest.notify($crate::notify::NotificationKind::Fatal, format_args!($( $fmt_args ),*), None)
     };
     ($dest:expr, $( $fmt_args:expr ),* ; $err:expr) => {
-        $dest.notify($crate::notify::NotificationKind::Fatal, format_args!($( $fmt_args ),*), Some(&$err))
+        $dest.notify($crate::notify::NotificationKind::Fatal, format_args!($( $fmt_args ),*), Some($err))
     };
 }
 
@@ -169,5 +169,46 @@ impl NoopNotificationBackend {
 }
 
 impl NotificationBackend for NoopNotificationBackend {
-    fn notify(&mut self, _kind: NotificationKind, _args: Arguments, _err: Option<&Error>) {}
+    fn notify(&mut self, _kind: NotificationKind, _args: Arguments, _err: Option<Error>) {}
+}
+
+
+#[derive(Debug)]
+struct NotificationData {
+    kind: NotificationKind,
+    text: String,
+    err: Option<Error>,
+}
+
+/// A notification backend that buffers notifications and emits them later.
+#[derive(Debug)]
+pub struct BufferingNotificationBackend {
+    buf: Vec<NotificationData>,
+}
+
+impl BufferingNotificationBackend {
+    /// Create and return a new BufferingNotificationBackend.
+    pub fn new() -> Self {
+        Self { buf: Vec::new() }
+    }
+
+    /// Empty the buffered notifications into a different notification backend.
+    ///
+    /// This function consumes the object.
+    pub fn drain<B: NotificationBackend>(mut self, other: &mut B) {
+        for info in self.buf.drain(..) {
+            other.notify(info.kind, format_args!("{}", info.text), info.err);
+        }
+    }
+}
+
+
+impl NotificationBackend for BufferingNotificationBackend {
+    fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>) {
+        self.buf.push(NotificationData {
+            kind: kind,
+            text: format!("{}", args),
+            err: err,
+        });
+    }
 }
