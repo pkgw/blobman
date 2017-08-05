@@ -12,6 +12,7 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+app_dirs = "^1.1"
 error-chain = "^0.10"
 sha2 = "^0.5"
 toml = "^0.4"
