@@ -1,0 +1,23 @@
+# Copyright 2017 Peter Williams and collaborators
+# Licensed under the MIT License.
+
+[package]
+name = "blobman-cli"
+version = "0.1.0"
+authors = ["Peter Williams <peter@newton.cx>"]
+description = """
+A command-line interface to the “blobman” binary blob management framework.
+"""
+readme = "README.md"
+license = "MIT"
+
+[[bin]]
+name = "blobman"
+path = "src/main.rs"
+
+[workspace]
+
+[dependencies]
+clap = "^2.26"
+blobman = { version = "0.1.0", path = "blobman" }
+termcolor = "^0.3"

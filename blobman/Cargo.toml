@@ -1,0 +1,17 @@
+# Copyright 2017 Peter Williams and collaborators
+# Licensed under the MIT License.
+
+[package]
+name = "blobman"
+version = "0.1.0"
+authors = ["Peter Williams <peter@newton.cx>"]
+description = """
+A framework for precise management of binary blobs.
+"""
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+error-chain = "^0.10"
+sha2 = "^0.5"
+toml = "^0.4"
