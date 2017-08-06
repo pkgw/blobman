@@ -9,11 +9,18 @@ use blobman::errors::Result;
 use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
 use blobman::notify::termcolor::TermcolorNotificationBackend;
 use clap::{Arg, ArgMatches, App, SubCommand};
+use std::io::{self, Write};
 use std::process;
 
 
 fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
-    if let Some(fetch_m) = matches.subcommand_matches("fetch") {
+    if let Some(cat_m) = matches.subcommand_matches("cat") {
+        let mut sess = blobman::Session::new(&config, nbe)?;
+        let mut bstream = sess.open_blob(cat_m.value_of("NAME").unwrap())?;
+        let mut stdout = io::stdout();
+        io::copy(&mut bstream, &mut stdout)?;
+        stdout.flush()?; // note: empirically, this is necessary
+    } else if let Some(fetch_m) = matches.subcommand_matches("fetch") {
         let mut sess = blobman::Session::new(&config, nbe)?;
         sess.ingest_from_url(fetch_m.value_of("URL").unwrap())?;
         sess.rewrite_manifest()?;
@@ -39,6 +46,12 @@ fn main() {
              .help("How much chatter to print when running")
              .possible_values(&["default", "minimal"])
              .default_value("default"))
+        .subcommand(SubCommand::with_name("cat")
+                    .about("Stream blob data to standard output")
+                    .arg(Arg::with_name("NAME")
+                         .help("The name of the blob to stream.")
+                         .required(true)
+                         .index(1)))
         .subcommand(SubCommand::with_name("fetch")
                     .about("Download and ingest a file")
                     .arg(Arg::with_name("URL")

@@ -35,7 +35,7 @@ pub mod storage;
 
 
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use errors::Result;
@@ -149,5 +149,21 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
               "couldn\'t link {} to {}", storage_path.display(), dest_path.display());
 
         Ok(())
+    }
+
+
+    /// Get a Read stream to the named blob.
+    pub fn open_blob(&mut self, name: &str) -> Result<Box<Read>> {
+        let storage = ctry!(self.get_storage(); "cannot open storage backend");
+
+        let binfo = match self.manifest.lookup(name) {
+            Some(b) => b,
+            None => { return err_msg!("no known blob named \"{}\"", name); },
+        };
+
+        match storage.open(binfo.digest())? {
+            Some(r) => Ok(r),
+            None => { return err_msg!("blob \"{}\" not available", name); },
+        }
     }
 }
