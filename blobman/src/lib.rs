@@ -16,6 +16,7 @@ expects.
 extern crate app_dirs;
 #[macro_use] extern crate error_chain;
 extern crate hyper;
+extern crate hyper_native_tls;
 extern crate mkstemp;
 #[macro_use] extern crate serde_derive;
 extern crate serde;
@@ -27,6 +28,7 @@ extern crate toml;
 #[macro_use] pub mod errors;
 pub mod config;
 pub mod digest;
+pub mod http;
 pub mod io;
 pub mod manifest;
 pub mod storage;
