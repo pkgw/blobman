@@ -34,7 +34,9 @@ pub mod manifest;
 pub mod storage;
 
 
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use errors::Result;
 
@@ -46,8 +48,9 @@ const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {name: "blobman", author: 
 pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     config: &'a config::UserConfig,
     nbe: &'a mut B,
-    _manifest_path: Option<PathBuf>,
     manifest: manifest::Manifest,
+    manifest_path: Option<PathBuf>,
+    manifest_modified: bool,
 }
 
 
@@ -59,8 +62,9 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         Ok(Self {
             config: config,
             nbe: nbe,
-            _manifest_path: manifest_path,
             manifest: manifest,
+            manifest_path: manifest_path,
+            manifest_modified: false,
         })
     }
 
@@ -92,7 +96,27 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             manifest::BlobInfo::new_from_ingest(file_name, source, &mut *storage)?
         };
         self.manifest.insert_or_update(binfo, self.nbe);
+        self.manifest_modified = true;
 
+        Ok(())
+    }
+
+
+    /// Rewrite the manifest if needed.
+    pub fn rewrite_manifest(&mut self) -> Result<()> {
+        if !self.manifest_modified {
+            return Ok(());
+        }
+
+        let path = self.manifest_path
+            .as_ref()
+            .map(|pb| pb.as_ref())
+            .unwrap_or_else(|| Path::new(manifest::MANIFEST_STEM));
+        let text = toml::ser::to_string_pretty(&self.manifest)?;
+        let mut f = File::create(&path)?;
+        ctry!(write!(f, "{}", text); "couldn\'t write manifest file {}", path.display());
+        bm_note!(self.nbe, "wrote manifest {}", path.display());
+        self.manifest_modified = false;
         Ok(())
     }
 }

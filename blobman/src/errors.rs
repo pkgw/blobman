@@ -30,7 +30,8 @@ error_chain! {
         HyperParse(hyper::error::ParseError) #[doc = "A ParseError from the [hyper](https://docs.rs/hyper) crate"];
         Io(io::Error) #[doc = "An I/O-related error."];
         ParseInt(num::ParseIntError) #[doc = "An error related to parsing integers."];
-        TomlDe(toml::de::Error) #[doc = "An error from the [toml](https://docs.rs/toml) crate."];
+        TomlDe(toml::de::Error) #[doc = "A deserialization error from the [toml](https://docs.rs/toml) crate."];
+        TomlSer(toml::ser::Error) #[doc = "A serialization error from the [toml](https://docs.rs/toml) crate."];
     }
 
     errors {

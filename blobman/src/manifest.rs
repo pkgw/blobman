@@ -19,7 +19,8 @@ use notify::NotificationBackend;
 use storage::Storage;
 
 
-const MANIFEST_STEM: &'static str = ".blobs.toml";
+/// The basename used by manifest files.
+pub const MANIFEST_STEM: &'static str = ".blobs.toml";
 const PARENT_DIR: &'static str = "..";
 
 
@@ -130,6 +131,8 @@ impl Manifest {
             Entry::Occupied(mut oe) => {
                 if oe.get() != &binfo {
                     bm_note!(nbe, "updating entry for {}", binfo.name);
+                } else {
+                    bm_note!(nbe, "entry for {} is unchanged", binfo.name);
                 }
                 oe.insert(binfo);
             },
