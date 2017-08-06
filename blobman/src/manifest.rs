@@ -11,6 +11,7 @@ use std::io::Read;
 use std::path::{Component, PathBuf};
 use toml;
 
+use digest::DigestData;
 use errors::Result;
 use io;
 
@@ -23,6 +24,8 @@ const PARENT_DIR: &'static str = "..";
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlobInfo {
     name: String,
+    size: u64,
+    sha256: DigestData,
 }
 
 

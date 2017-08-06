@@ -10,12 +10,15 @@ engine. (Which the author of this module also wrote.)
 
 */
 
+use serde;
 pub use sha2::Sha256 as DigestComputer;
 pub use sha2::Digest;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
+use std::result::Result as StdResult;
 use std::str::FromStr;
 use std::string::ToString;
 
@@ -106,6 +109,38 @@ impl FromStr for DigestData {
         let mut result = DigestData::zeros();
         hex_to_bytes(s, &mut result.0)?;
         Ok(result)
+    }
+}
+
+
+impl<'de> serde::Deserialize<'de> for DigestData {
+    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error> where D: serde::Deserializer<'de> {
+        struct DigestDataVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for DigestDataVisitor {
+            type Value = DigestData;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a hexadecimal string")
+            }
+
+            fn visit_str<E>(self, v: &str) -> StdResult<Self::Value, E> where E: serde::de::Error {
+                let mut result = DigestData::zeros();
+                match hex_to_bytes(v, &mut result.0) {
+                    Ok(_) => Ok(result),
+                    Err(e) => Err(E::custom(e.description())),
+                }
+            }
+        }
+
+        deserializer.deserialize_str(DigestDataVisitor)
+    }
+}
+
+
+impl serde::Serialize for DigestData {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error> where S: serde::Serializer {
+        serializer.serialize_str(self.to_string().as_ref())
     }
 }
 
