@@ -47,7 +47,7 @@ pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     config: &'a config::UserConfig,
     nbe: &'a mut B,
     _manifest_path: Option<PathBuf>,
-    _manifest: manifest::Manifest,
+    manifest: manifest::Manifest,
 }
 
 
@@ -60,7 +60,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             config: config,
             nbe: nbe,
             _manifest_path: manifest_path,
-            _manifest: manifest,
+            manifest: manifest,
         })
     }
 
@@ -91,6 +91,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             let source = http::download(url)?;
             manifest::BlobInfo::new_from_ingest(file_name, source, &mut *storage)?
         };
+        self.manifest.insert_or_update(binfo, self.nbe);
 
         Ok(())
     }

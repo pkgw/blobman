@@ -6,7 +6,7 @@ Handling of the manifest of known blobs.
 
 */
 
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
 use std::io as std_io;
 use std::io::Read;
 use std::path::{Component, PathBuf};
@@ -15,6 +15,7 @@ use toml;
 use digest::{DigestData, Shim};
 use errors::Result;
 use io;
+use notify::NotificationBackend;
 use storage::Storage;
 
 
@@ -114,6 +115,27 @@ impl Manifest {
             // Try a higher-level parent.
             p.push(PARENT_DIR);
             p.push(MANIFEST_STEM);
+        }
+    }
+
+
+    /// Register a new blob with the manifest.
+    ///
+    /// If a blob under the same name was already known, the old information
+    /// is replaced.
+    pub fn insert_or_update<B: NotificationBackend>(&mut self, binfo: BlobInfo, nbe: &mut B) {
+        let e = self.blobs.entry(binfo.name.clone());
+
+        match e {
+            Entry::Occupied(mut oe) => {
+                if oe.get() != &binfo {
+                    bm_note!(nbe, "updating entry for {}", binfo.name);
+                }
+                oe.insert(binfo);
+            },
+            Entry::Vacant(ve) => {
+                ve.insert(binfo);
+            }
         }
     }
 }
