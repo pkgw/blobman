@@ -43,7 +43,10 @@ error_chain! {
 #[macro_export]
 macro_rules! ctry {
     ($op:expr ; $( $chain_fmt_args:expr ),*) => {
-        $op.chain_err(|| format!($( $chain_fmt_args ),*))?
+        {
+            use $crate::errors::ResultExt;
+            $op.chain_err(|| format!($( $chain_fmt_args ),*))?
+        }
     }
 }
 
