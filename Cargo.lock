@@ -81,6 +81,7 @@ dependencies = [
  "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mkstemp-rs 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -325,6 +326,14 @@ dependencies = [
  "net2 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mkstemp-rs"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -704,6 +713,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum mime 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c5ca99d8a021c1687882fd68dca26e601ceff5c26571c7cb41cf4ed60d57cb2d"
 "checksum mio 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "dbd91d3bfbceb13897065e97b2ef177a09a438cb33612b2d371bf568819a9313"
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
+"checksum mkstemp-rs 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0f06ab266cc4cd5f1001fb4b177f1793889a874cb56dd66d52a7ad2ec12278ba"
 "checksum net2 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)" = "94101fd932816f97eb9a5116f6c1a11511a1fed7db21c5ccd823b2dc11abf566"
 "checksum nodrop 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "52cd74cd09beba596430cc6e3091b74007169a56246e1262f0ba451ea95117b2"
 "checksum num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aec53c34f2d0247c5ca5d32cca1478762f301740468ee9ee6dcb7a0dd7a0c584"

@@ -16,6 +16,7 @@ expects.
 extern crate app_dirs;
 #[macro_use] extern crate error_chain;
 extern crate hyper;
+extern crate mkstemp;
 #[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate sha2;
@@ -28,6 +29,7 @@ pub mod config;
 pub mod digest;
 pub mod io;
 pub mod manifest;
+pub mod storage;
 
 
 use std::path::PathBuf;
