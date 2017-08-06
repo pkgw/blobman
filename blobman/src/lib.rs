@@ -25,6 +25,7 @@ extern crate toml;
 #[macro_use] pub mod notify; // must come first to provide macros for other modules
 #[macro_use] pub mod errors;
 pub mod config;
+pub mod digest;
 pub mod io;
 pub mod manifest;
 

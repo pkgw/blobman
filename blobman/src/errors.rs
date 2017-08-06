@@ -7,10 +7,14 @@ This module implements the error types used by the blobman crate.
 It provides a generic, chainable error type using the infrastructure provided
 by the very nice [error-chain](https://docs.rs/error-chain) crate.
 
+This module is ripped off from the `errors` module used by the
+[Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
+engine. (Which the author of this module also wrote.)
+
 */
 
 use app_dirs;
-use std::{convert, io};
+use std::{convert, io, num};
 use toml;
 
 
@@ -22,7 +26,16 @@ error_chain! {
     foreign_links {
         AppDirs(app_dirs::AppDirsError) #[doc = "An error from the [app_dirs](https://docs.rs/app_dirs) crate"];
         Io(io::Error) #[doc = "An I/O-related error."];
+        ParseInt(num::ParseIntError) #[doc = "An error related to parsing integers."];
         TomlDe(toml::de::Error) #[doc = "An error from the [toml](https://docs.rs/toml) crate."];
+    }
+
+    errors {
+        /// Can we do this?
+        BadLength(expected: usize, observed: usize) {
+            description("the item is not the expected length")
+            display("expected length {}; found {}", expected, observed)
+        }
     }
 }
 
