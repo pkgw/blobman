@@ -27,6 +27,7 @@ error_chain! {
     foreign_links {
         AppDirs(app_dirs::AppDirsError) #[doc = "An error from the [app_dirs](https://docs.rs/app_dirs) crate"];
         Hyper(hyper::Error) #[doc = "An error from the [hyper](https://docs.rs/hyper) crate"];
+        HyperParse(hyper::error::ParseError) #[doc = "A ParseError from the [hyper](https://docs.rs/hyper) crate"];
         Io(io::Error) #[doc = "An I/O-related error."];
         ParseInt(num::ParseIntError) #[doc = "An error related to parsing integers."];
         TomlDe(toml::de::Error) #[doc = "An error from the [toml](https://docs.rs/toml) crate."];

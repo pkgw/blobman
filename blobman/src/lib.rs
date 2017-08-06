@@ -34,7 +34,6 @@ pub mod manifest;
 pub mod storage;
 
 
-use std::io as std_io;
 use std::path::PathBuf;
 
 use errors::Result;
@@ -78,16 +77,21 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
 
     /// Fetch a blob from a URL and ingest it.
     pub fn fetch_url(&mut self, url: &str) -> Result<()> {
-        let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
-        let (cookie, digest, _size) = {
-            let mut source = http::download(url)?;
-            let (sink, cookie) = storage.start_staging()?;
-            let mut shim = digest::Shim::new(sink);
-            let size = std_io::copy(&mut source, &mut shim)?;
-            let (_sink, digest) = shim.finish();
-            (cookie, digest, size)
+        let parsed = hyper::Url::parse(url)?;
+        let file_name = match parsed.path_segments() {
+            None => { return err_msg!("cannot extract a filename from the URL {}", url); },
+            Some(segments) => match segments.last() {
+                None => { return err_msg!("cannot extract a filename from the URL {}", url); },
+                Some(s) => s,
+            },
         };
-        storage.finish_staging(cookie, &digest)?;
+
+        let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
+        let binfo = {
+            let source = http::download(url)?;
+            manifest::BlobInfo::new_from_ingest(file_name, source, &mut *storage)?
+        };
+
         Ok(())
     }
 }

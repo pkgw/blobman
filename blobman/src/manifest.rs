@@ -7,13 +7,15 @@ Handling of the manifest of known blobs.
 */
 
 use std::collections::HashMap;
+use std::io as std_io;
 use std::io::Read;
 use std::path::{Component, PathBuf};
 use toml;
 
-use digest::DigestData;
+use digest::{DigestData, Shim};
 use errors::Result;
 use io;
+use storage::Storage;
 
 
 const MANIFEST_STEM: &'static str = ".blobs.toml";
@@ -26,6 +28,31 @@ pub struct BlobInfo {
     name: String,
     size: u64,
     sha256: DigestData,
+}
+
+
+impl BlobInfo {
+    /// Ingest a new blob and extract its properties.
+    ///
+    /// *source* is some streaming source of blob data. The data are staged
+    /// into the storage area *storage*, and upon successful completion we
+    /// create a BlobInfo object summarizing the blob contents.
+    pub fn new_from_ingest<R: Read>(name: &str, mut source: R, storage: &mut Storage) -> Result<Self> {
+        let (cookie, digest, size) = {
+            let (sink, cookie) = storage.start_staging()?;
+            let mut shim = Shim::new(sink);
+            let size = std_io::copy(&mut source, &mut shim)?;
+            let (_sink, digest) = shim.finish();
+            (cookie, digest, size)
+        };
+        storage.finish_staging(cookie, &digest)?;
+
+        Ok(Self {
+            name: name.to_owned(),
+            size: size,
+            sha256: digest,
+        })
+    }
 }
 
 
