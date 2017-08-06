@@ -93,10 +93,10 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
         let mut binfo = {
             let source = http::download(url)?;
-            manifest::BlobInfo::new_from_ingest(file_name, source, &mut *storage)?
+            manifest::BlobInfo::new_from_ingest(source, &mut *storage)?
         };
         binfo.set_url(url);
-        self.manifest.insert_or_update(binfo, self.nbe);
+        self.manifest.insert_or_update(file_name, binfo, self.nbe);
         self.manifest_modified = true;
 
         Ok(())

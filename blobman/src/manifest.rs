@@ -27,7 +27,6 @@ const PARENT_DIR: &'static str = "..";
 /// Information about a blob.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlobInfo {
-    name: String,
     size: u64,
     sha256: DigestData,
     url: Option<String>,
@@ -40,7 +39,7 @@ impl BlobInfo {
     /// *source* is some streaming source of blob data. The data are staged
     /// into the storage area *storage*, and upon successful completion we
     /// create a BlobInfo object summarizing the blob contents.
-    pub fn new_from_ingest<R: Read>(name: &str, mut source: R, storage: &mut Storage) -> Result<Self> {
+    pub fn new_from_ingest<R: Read>(mut source: R, storage: &mut Storage) -> Result<Self> {
         let (cookie, digest, size) = {
             let (sink, cookie) = storage.start_staging()?;
             let mut shim = Shim::new(sink);
@@ -51,7 +50,6 @@ impl BlobInfo {
         storage.finish_staging(cookie, &digest)?;
 
         Ok(Self {
-            name: name.to_owned(),
             size: size,
             sha256: digest,
             url: None,
@@ -131,15 +129,15 @@ impl Manifest {
     ///
     /// If a blob under the same name was already known, the old information
     /// is replaced.
-    pub fn insert_or_update<B: NotificationBackend>(&mut self, binfo: BlobInfo, nbe: &mut B) {
-        let e = self.blobs.entry(binfo.name.clone());
+    pub fn insert_or_update<B: NotificationBackend>(&mut self, name: &str, binfo: BlobInfo, nbe: &mut B) {
+        let e = self.blobs.entry(name.to_owned());
 
         match e {
             Entry::Occupied(mut oe) => {
                 if oe.get() != &binfo {
-                    bm_note!(nbe, "updating entry for {}", binfo.name);
+                    bm_note!(nbe, "updating entry for {}", name);
                 } else {
-                    bm_note!(nbe, "entry for {} is unchanged", binfo.name);
+                    bm_note!(nbe, "entry for {} is unchanged", name);
                 }
                 oe.insert(binfo);
             },
