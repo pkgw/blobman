@@ -9,13 +9,13 @@ use std::process;
 
 use blobman::config::UserConfig;
 use blobman::errors::Result;
-use blobman::notify::{BufferingNotificationBackend, ChatterLevel, NotificationBackend};
+use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
 use blobman::notify::termcolor::TermcolorNotificationBackend;
 
 
-fn inner(matches: ArgMatches, _config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
     if let Some(fetch_m) = matches.subcommand_matches("fetch") {
-        bm_note!(nbe, "fetch");
+        blobman::Session::new(&config, nbe)?.fetch_url(fetch_m.value_of("URL").unwrap())?;
     } else {
         return err_msg!("you must specify a subcommand; try \"blobman help\"");
     }

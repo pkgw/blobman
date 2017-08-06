@@ -25,5 +25,42 @@ extern crate toml;
 #[macro_use] pub mod errors;
 pub mod config;
 pub mod io;
+pub mod manifest;
+
+
+use std::path::PathBuf;
+
+use errors::Result;
+
 
 const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {name: "blobman", author: "BlobmanProject"};
+
+
+/// A session in which we do stuff.
+pub struct Session<'a, B: 'a + notify::NotificationBackend> {
+    config: &'a config::UserConfig,
+    nbe: &'a mut B,
+    manifest_path: Option<PathBuf>,
+    manifest: manifest::Manifest,
+}
+
+
+impl<'a, B: notify::NotificationBackend> Session<'a, B> {
+    /// Create and return a new Session.
+    pub fn new(config: &'a config::UserConfig, nbe: &'a mut B) -> Result<Self> {
+        let (manifest, manifest_path) = manifest::Manifest::find()?;
+
+        Ok(Self {
+            config: config,
+            nbe: nbe,
+            manifest_path: manifest_path,
+            manifest: manifest,
+        })
+    }
+
+    /// Fetch a blob from a URL and ingest it.
+    pub fn fetch_url(&mut self, url: &str) -> Result<()> {
+        bm_note!(self.nbe, "should fetch: {}", url);
+        Ok(())
+    }
+}
