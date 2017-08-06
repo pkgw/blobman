@@ -15,7 +15,7 @@ use std::process;
 fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
     if let Some(fetch_m) = matches.subcommand_matches("fetch") {
         let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.fetch_url(fetch_m.value_of("URL").unwrap())?;
+        sess.ingest_from_url(fetch_m.value_of("URL").unwrap())?;
         sess.rewrite_manifest()?;
     } else {
         return err_msg!("you must specify a subcommand; try \"blobman help\"");

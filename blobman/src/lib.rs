@@ -80,7 +80,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     }
 
     /// Fetch a blob from a URL and ingest it.
-    pub fn fetch_url(&mut self, url: &str) -> Result<()> {
+    pub fn ingest_from_url(&mut self, url: &str) -> Result<()> {
         let parsed = hyper::Url::parse(url)?;
         let file_name = match parsed.path_segments() {
             None => { return err_msg!("cannot extract a filename from the URL {}", url); },
