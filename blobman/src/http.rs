@@ -9,11 +9,9 @@ seems overly difficult to get asynchronous downloading going just yet without
 making the whole application synchronous.
 */
 
-use hyper::{self, Client, Url};
-use hyper::client::{Response, RedirectPolicy};
-use hyper::header::{Headers, Range};
+use hyper::{self, Client};
+use hyper::client::Response;
 use hyper::net::HttpsConnector;
-use hyper::status::StatusCode;
 use hyper_native_tls::NativeTlsClient;
 
 use errors::{Error, Result, ResultExt};
@@ -23,7 +21,7 @@ use errors::{Error, Result, ResultExt};
 pub fn download(url: &str) -> Result<Response> {
     let ssl = NativeTlsClient::new().unwrap();
     let connector = HttpsConnector::new(ssl);
-    let mut client = Client::with_connector(connector);
+    let client = Client::with_connector(connector);
     let req = client.get(url);
     let res = ctry!(req.send(); "couldn\'t request Web address {}", url);
 

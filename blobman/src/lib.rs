@@ -34,6 +34,7 @@ pub mod manifest;
 pub mod storage;
 
 
+use std::io as std_io;
 use std::path::PathBuf;
 
 use errors::Result;
@@ -46,8 +47,8 @@ const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {name: "blobman", author: 
 pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     config: &'a config::UserConfig,
     nbe: &'a mut B,
-    manifest_path: Option<PathBuf>,
-    manifest: manifest::Manifest,
+    _manifest_path: Option<PathBuf>,
+    _manifest: manifest::Manifest,
 }
 
 
@@ -59,8 +60,8 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         Ok(Self {
             config: config,
             nbe: nbe,
-            manifest_path: manifest_path,
-            manifest: manifest,
+            _manifest_path: manifest_path,
+            _manifest: manifest,
         })
     }
 
@@ -77,7 +78,16 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
 
     /// Fetch a blob from a URL and ingest it.
     pub fn fetch_url(&mut self, url: &str) -> Result<()> {
-        bm_note!(self.nbe, "should fetch: {}", url);
+        let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
+        let (cookie, digest, _size) = {
+            let mut source = http::download(url)?;
+            let (sink, cookie) = storage.start_staging()?;
+            let mut shim = digest::Shim::new(sink);
+            let size = std_io::copy(&mut source, &mut shim)?;
+            let (_sink, digest) = shim.finish();
+            (cookie, digest, size)
+        };
+        storage.finish_staging(cookie, &digest)?;
         Ok(())
     }
 }

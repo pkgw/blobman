@@ -13,6 +13,8 @@ engine. (Which the author of this module also wrote.)
 pub use sha2::Sha256 as DigestComputer;
 pub use sha2::Digest;
 use std::fs;
+use std::io;
+use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::ToString;
@@ -114,5 +116,38 @@ impl From<DigestComputer> for DigestData {
         let res = s.result();
         result.0.copy_from_slice(res.as_slice());
         result
+    }
+}
+
+
+/// A helper to compute a digest as a stream is processed
+pub struct Shim<W: io::Write> {
+    inner: W,
+    computer: DigestComputer,
+}
+
+impl<W: io::Write> Shim<W> {
+    /// Create and return a new Shim.
+    pub fn new(writer: W) -> Self {
+        Self {
+            inner: writer,
+            computer: create(),
+        }
+    }
+
+    /// Get the digest, destroying the shim.
+    pub fn finish(self) -> (W, DigestData) {
+        (self.inner, self.computer.into())
+    }
+}
+
+impl<W: io::Write> io::Write for Shim<W> {
+    fn write(&mut self, data: &[u8]) -> IoResult<usize> {
+        self.computer.input(data);
+        self.inner.write(data)
+    }
+
+    fn flush(&mut self) -> IoResult<()> {
+        self.inner.flush()
     }
 }
