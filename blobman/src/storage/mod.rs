@@ -6,7 +6,7 @@ Backends for storing blobs.
 
 */
 
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use digest::DigestData;
@@ -38,7 +38,7 @@ pub trait Storage {
     ///
     /// Blobs are identified by their digests. If the blob is not present in
     /// this Storage, that's OK; `Ok(None)` should be returned.
-    fn open(&self, digest: &DigestData) -> Result<Option<Box<Write>>>;
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<Read>>>;
 
     /// Start staging a new file.
     ///

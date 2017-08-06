@@ -10,7 +10,7 @@ use mkstemp::TempFile;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use digest::DigestData;
@@ -52,10 +52,10 @@ impl Storage for FilesystemStorage {
         }
     }
 
-    fn open(&self, digest: &DigestData) -> Result<Option<Box<Write>>> {
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<Read>>> {
         let path = ctry!(digest.create_two_part_path(&self.prefix);
                          "couldn't make directories in {}", self.prefix.display());
-        Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<Write>))
+        Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<Read>))
     }
 
     fn start_staging<'a>(&'a mut self) -> Result<(Box<Write>, StagingCookie)> {
