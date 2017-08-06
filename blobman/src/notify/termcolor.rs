@@ -15,7 +15,6 @@ engine. (Which the author of this module also wrote.)
 
 use std::fmt::Arguments;
 use std::io::Write;
-
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use errors::Error;

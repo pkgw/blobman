@@ -3,11 +3,10 @@
 
 //! Configuration of the blobman framework.
 
+use app_dirs::{app_root, AppDataType};
 use std::io::{Read, Write};
 use std::fs::File;
 use std::path::PathBuf;
-
-use app_dirs::{app_root, AppDataType};
 use toml;
 
 use errors::Result;

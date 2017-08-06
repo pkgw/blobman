@@ -4,13 +4,12 @@
 #[macro_use] extern crate blobman;
 extern crate clap;
 
-use clap::{Arg, ArgMatches, App, SubCommand};
-use std::process;
-
 use blobman::config::UserConfig;
 use blobman::errors::Result;
 use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
 use blobman::notify::termcolor::TermcolorNotificationBackend;
+use clap::{Arg, ArgMatches, App, SubCommand};
+use std::process;
 
 
 fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
