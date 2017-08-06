@@ -15,6 +15,7 @@ expects.
 
 extern crate app_dirs;
 #[macro_use] extern crate error_chain;
+extern crate hyper;
 #[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate sha2;
