@@ -5,7 +5,7 @@
 I/O helpers.
 */
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::ErrorKind as IoErrorKind;
 use std::path::Path;
 
@@ -23,6 +23,21 @@ pub fn try_open<P: AsRef<Path>>(path: P) -> Result<Option<File>> {
         Err(e) => {
             if e.kind() == IoErrorKind::NotFound {
                 Ok(None)
+            } else {
+                Err(e.into())
+            }
+        }
+    }
+}
+
+
+/// Try to remove a file, ignoring the failure if it does not exist.
+pub fn try_remove_file<P: AsRef<Path>>(path: P) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            if e.kind() == IoErrorKind::NotFound {
+                Ok(())
             } else {
                 Err(e.into())
             }

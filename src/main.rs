@@ -17,6 +17,9 @@ fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificatio
         let mut sess = blobman::Session::new(&config, nbe)?;
         sess.ingest_from_url(fetch_m.value_of("URL").unwrap())?;
         sess.rewrite_manifest()?;
+    } else if let Some(provide_m) = matches.subcommand_matches("provide") {
+        let mut sess = blobman::Session::new(&config, nbe)?;
+        sess.provide_blob(provide_m.value_of("NAME").unwrap())?;
     } else {
         return err_msg!("you must specify a subcommand; try \"blobman help\"");
     }
@@ -33,13 +36,19 @@ fn main() {
              .long("chatter")
              .short("c")
              .value_name("LEVEL")
-             .help("How much chatter to print when running.")
+             .help("How much chatter to print when running")
              .possible_values(&["default", "minimal"])
              .default_value("default"))
         .subcommand(SubCommand::with_name("fetch")
-                    .about("download and ingest a file")
+                    .about("Download and ingest a file")
                     .arg(Arg::with_name("URL")
                          .help("The URL to download.")
+                         .required(true)
+                         .index(1)))
+        .subcommand(SubCommand::with_name("provide")
+                    .about("Make a file corresponding to the named blob")
+                    .arg(Arg::with_name("NAME")
+                         .help("The name of the blob to provide.")
                          .required(true)
                          .index(1)))
         .get_matches ();

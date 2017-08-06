@@ -15,6 +15,7 @@ use std::path::PathBuf;
 
 use digest::DigestData;
 use errors::Result;
+use io;
 use super::{StagingCookie, Storage};
 
 
@@ -40,6 +41,23 @@ impl FilesystemStorage {
 
 
 impl Storage for FilesystemStorage {
+    fn get_path(&self, digest: &DigestData) -> Result<Option<PathBuf>> {
+        let path = ctry!(digest.create_two_part_path(&self.prefix);
+                         "couldn't make directories in {}", self.prefix.display());
+
+        if path.exists() {
+            Ok(Some(path))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<Write>>> {
+        let path = ctry!(digest.create_two_part_path(&self.prefix);
+                         "couldn't make directories in {}", self.prefix.display());
+        Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<Write>))
+    }
+
     fn start_staging<'a>(&'a mut self) -> Result<(Box<Write>, StagingCookie)> {
         let mut p = self.prefix.clone();
         p.push("staging.XXXXXXXX");

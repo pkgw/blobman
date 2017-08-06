@@ -34,7 +34,7 @@ pub mod manifest;
 pub mod storage;
 
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -118,6 +118,36 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         ctry!(write!(f, "{}", text); "couldn\'t write manifest file {}", path.display());
         bm_note!(self.nbe, "wrote manifest {}", path.display());
         self.manifest_modified = false;
+        Ok(())
+    }
+
+
+    /// Provide a blob in the current directory.
+    ///
+    /// We should eventually have some method to identify which of several
+    /// Storage backends has the blob we want, but for now there's just one.
+    pub fn provide_blob(&mut self, name: &str) -> Result<()> {
+        let storage = ctry!(self.get_storage(); "cannot open storage backend");
+
+        let storage_path = {
+            let binfo = match self.manifest.lookup(name) {
+                Some(b) => b,
+                None => { return err_msg!("no known blob named \"{}\"", name); },
+            };
+
+            match storage.get_path(binfo.digest())? {
+                Some(p) => p,
+                None => { return err_msg!("blob \"{}\" not available as standalone file", name); },
+            }
+        };
+
+        let dest_path = Path::new(name);
+
+        ctry!(io::try_remove_file(&dest_path);
+              "couldn\'t remove existing file {}", dest_path.display());
+        ctry!(fs::hard_link(&storage_path, &dest_path);
+              "couldn\'t link {} to {}", storage_path.display(), dest_path.display());
+
         Ok(())
     }
 }

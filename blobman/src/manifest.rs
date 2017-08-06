@@ -56,6 +56,11 @@ impl BlobInfo {
         })
     }
 
+    /// Get the digest associated with this blob.
+    pub fn digest<'a>(&'a self) -> &'a DigestData {
+        &self.sha256
+    }
+
     /// Set the URL associated with this object.
     pub fn set_url(&mut self, url: &str) {
         self.url = Some(url.to_owned());
@@ -122,6 +127,12 @@ impl Manifest {
             p.push(PARENT_DIR);
             p.push(MANIFEST_STEM);
         }
+    }
+
+
+    /// Look up information for the named blob.
+    pub fn lookup<'a>(&'a self, name: &str) -> Option<&'a BlobInfo> {
+        self.blobs.get(name)
     }
 
 

@@ -7,6 +7,7 @@ Backends for storing blobs.
 */
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use digest::DigestData;
 use errors::Result;
@@ -26,6 +27,19 @@ pub type StagingCookie = usize;
 /// objects in a generic fashion. The new API feels less classy but should
 /// work just fine.
 pub trait Storage {
+    /// Get a path to a blob, if possible.
+    ///
+    /// Blobs are identified by their digests. If the blob is not present in
+    /// this Storage, or this Storage does not store this blob as a standalone
+    /// file on the filesystem, that's OK; `Ok(None)` should be returned.
+    fn get_path(&self, digest: &DigestData) -> Result<Option<PathBuf>>;
+
+    /// Open a blob, if possible.
+    ///
+    /// Blobs are identified by their digests. If the blob is not present in
+    /// this Storage, that's OK; `Ok(None)` should be returned.
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<Write>>>;
+
     /// Start staging a new file.
     ///
     /// Staging is performed by creating a "stager" object. Blob data is
