@@ -62,6 +62,17 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         })
     }
 
+
+    /// Get a storage backend for this session.
+    ///
+    /// TODO: Maybe we'll one day have multiple backends and some fancy way to
+    /// decide which one to use. For now we just use one. We do, however, use
+    /// a trait object since we envision have runtime-configurable backends
+    /// here.
+    pub fn get_storage(&mut self) -> Result<Box<storage::Storage>> {
+        self.config.get_storage(self.nbe)
+    }
+
     /// Fetch a blob from a URL and ingest it.
     pub fn fetch_url(&mut self, url: &str) -> Result<()> {
         bm_note!(self.nbe, "should fetch: {}", url);
