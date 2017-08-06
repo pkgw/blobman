@@ -30,6 +30,7 @@ pub struct BlobInfo {
     name: String,
     size: u64,
     sha256: DigestData,
+    url: Option<String>,
 }
 
 
@@ -53,7 +54,13 @@ impl BlobInfo {
             name: name.to_owned(),
             size: size,
             sha256: digest,
+            url: None,
         })
+    }
+
+    /// Set the URL associated with this object.
+    pub fn set_url(&mut self, url: &str) {
+        self.url = Some(url.to_owned());
     }
 }
 
