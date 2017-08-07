@@ -36,14 +36,20 @@ pub struct BlobInfo {
 impl BlobInfo {
     /// Ingest a new blob and extract its properties.
     ///
-    /// *source* is some streaming source of blob data. The data are staged
-    /// into the storage area *storage*, and upon successful completion we
-    /// create a BlobInfo object summarizing the blob contents.
-    pub fn new_from_ingest<R: Read>(mut source: R, storage: &mut Storage) -> Result<Self> {
+    /// The newly-ingested blob is staged in the storage area *storage*. The
+    /// staging happens by calling the function *filler*, which writes data to
+    /// a destination that this function hands to it. Upon successful
+    /// completion we create a BlobInfo object summarizing the blob contents.
+    ///
+    /// The somewhat awkward architecture here is because of how we have to
+    /// interface with the async, futures-based hyper HTTP library.
+    pub fn new_from_ingest<F>(filler: F, storage: &mut Storage) -> Result<Self>
+        where F: FnOnce(&mut Shim<Box<std_io::Write>>) -> Result<u64>
+    {
         let (cookie, digest, size) = {
             let (sink, cookie) = storage.start_staging()?;
             let mut shim = Shim::new(sink);
-            let size = std_io::copy(&mut source, &mut shim)?;
+            let size = filler(&mut shim)?;
             let (_sink, digest) = shim.finish();
             (cookie, digest, size)
         };

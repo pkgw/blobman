@@ -15,6 +15,7 @@ engine. (Which the author of this module also wrote.)
 
 use app_dirs;
 use hyper;
+use native_tls;
 use std::{convert, io, num};
 use toml;
 
@@ -27,8 +28,9 @@ error_chain! {
     foreign_links {
         AppDirs(app_dirs::AppDirsError) #[doc = "An error from the [app_dirs](https://docs.rs/app_dirs) crate"];
         Hyper(hyper::Error) #[doc = "An error from the [hyper](https://docs.rs/hyper) crate"];
-        HyperParse(hyper::error::ParseError) #[doc = "A ParseError from the [hyper](https://docs.rs/hyper) crate"];
+        HyperUri(hyper::error::UriError) #[doc = "An URI error from the [hyper](https://docs.rs/hyper) crate"];
         Io(io::Error) #[doc = "An I/O-related error."];
+        NativeTls(native_tls::Error) #[doc = "An error from the native_tls crate."];
         ParseInt(num::ParseIntError) #[doc = "An error related to parsing integers."];
         TomlDe(toml::de::Error) #[doc = "A deserialization error from the [toml](https://docs.rs/toml) crate."];
         TomlSer(toml::ser::Error) #[doc = "A serialization error from the [toml](https://docs.rs/toml) crate."];
