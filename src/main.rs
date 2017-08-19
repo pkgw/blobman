@@ -21,8 +21,9 @@ fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificatio
         io::copy(&mut bstream, &mut stdout)?;
         stdout.flush()?; // note: empirically, this is necessary
     } else if let Some(fetch_m) = matches.subcommand_matches("fetch") {
+        let mode = fetch_m.value_of("MODE").unwrap().parse()?;
         let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.ingest_from_url(fetch_m.value_of("URL").unwrap(), fetch_m.value_of("name"))?;
+        sess.ingest_from_url(mode, fetch_m.value_of("URL").unwrap(), fetch_m.value_of("name"))?;
         sess.rewrite_manifest()?;
     } else if let Some(provide_m) = matches.subcommand_matches("provide") {
         let mut sess = blobman::Session::new(&config, nbe)?;
@@ -59,6 +60,13 @@ fn main() {
                          .short("n")
                          .value_name("NAME")
                          .help("The name to use for the fetched blob (default: derived from URL)."))
+                    .arg(Arg::with_name("MODE")
+                         .long("mode")
+                         .short("m")
+                         .value_name("MODE")
+                         .help("How to act if the blob is already registered")
+                         .possible_values(blobman::IngestMode::stringifications())
+                         .default_value("update"))
                     .arg(Arg::with_name("URL")
                          .help("The URL to download.")
                          .required(true)

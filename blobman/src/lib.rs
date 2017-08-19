@@ -42,11 +42,52 @@ pub mod storage;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-use errors::Result;
+use errors::{Error, Result};
 
 
 const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {name: "blobman", author: "BlobmanProject"};
+
+
+/// Different ways that we can behave when ingesting a new blob, depending on
+/// whether a blob of the same name or same contents already exists.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum IngestMode {
+    /// Ingest the new blob fully. If there is an existing blob of the same
+    /// name, update the record for that blob to refer to the new contents.
+    Update,
+
+    /// If a blob of the same name already exists, don't bother ingesting the
+    /// new one, without even checking whether the candidate new blob might
+    /// have different contents. If no blob of the same name already exists,
+    /// ingest it.
+    TrustExisting,
+}
+
+impl IngestMode {
+    /// Return a list of valid stringifications of the IngestMode type. The
+    /// purpose of this function is to assist the CLI in parsing command-line
+    /// arguments that map to IngestMode values.
+    pub fn stringifications() -> &'static [&'static str] {
+        static S: &'static[&str] = &["update", "trust"];
+        S
+    }
+}
+
+impl FromStr for IngestMode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s == "update" {
+            Ok(IngestMode::Update)
+        } else if s == "trust" {
+            Ok(IngestMode::TrustExisting)
+        } else {
+            err_msg!("unrecognized ingestion mode \"{}\"", s)
+        }
+    }
+}
 
 
 /// A session in which we do stuff.
@@ -85,7 +126,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     }
 
     /// Fetch a blob from a URL and ingest it.
-    pub fn ingest_from_url(&mut self, url: &str, name: Option<&str>) -> Result<()> {
+    pub fn ingest_from_url(&mut self, mode: IngestMode, url: &str, name: Option<&str>) -> Result<()> {
         let parsed: hyper::Uri = url.parse()?;
         let file_name = match name {
             Some(n) => n,
@@ -96,6 +137,13 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         };
 
         let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
+
+        if let IngestMode::TrustExisting = mode {
+            if self.manifest.lookup(file_name).is_some() {
+                return Ok(());
+            }
+        }
+
         let mut binfo = manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
         binfo.set_url(url);
         self.manifest.insert_or_update(file_name, binfo, self.nbe);
