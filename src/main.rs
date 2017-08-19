@@ -22,7 +22,7 @@ fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificatio
         stdout.flush()?; // note: empirically, this is necessary
     } else if let Some(fetch_m) = matches.subcommand_matches("fetch") {
         let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.ingest_from_url(fetch_m.value_of("URL").unwrap())?;
+        sess.ingest_from_url(fetch_m.value_of("URL").unwrap(), fetch_m.value_of("name"))?;
         sess.rewrite_manifest()?;
     } else if let Some(provide_m) = matches.subcommand_matches("provide") {
         let mut sess = blobman::Session::new(&config, nbe)?;
@@ -54,6 +54,11 @@ fn main() {
                          .index(1)))
         .subcommand(SubCommand::with_name("fetch")
                     .about("Download and ingest a file")
+                    .arg(Arg::with_name("name")
+                         .long("name")
+                         .short("n")
+                         .value_name("NAME")
+                         .help("The name to use for the fetched blob (default: derived from URL)."))
                     .arg(Arg::with_name("URL")
                          .help("The URL to download.")
                          .required(true)

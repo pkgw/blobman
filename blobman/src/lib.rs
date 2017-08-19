@@ -85,11 +85,14 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     }
 
     /// Fetch a blob from a URL and ingest it.
-    pub fn ingest_from_url(&mut self, url: &str) -> Result<()> {
+    pub fn ingest_from_url(&mut self, url: &str, name: Option<&str>) -> Result<()> {
         let parsed: hyper::Uri = url.parse()?;
-        let file_name = match parsed.path().split("/").last() {
-            None => { return err_msg!("cannot extract a filename from the URL {}", url); },
-            Some(s) => s,
+        let file_name = match name {
+            Some(n) => n,
+            None => match parsed.path().split("/").last() {
+                None => { return err_msg!("cannot extract a filename from the URL {}", url); },
+                Some(s) => s,
+            },
         };
 
         let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
