@@ -115,7 +115,6 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         let text = toml::ser::to_string_pretty(&self.manifest)?;
         let mut f = File::create(&path)?;
         ctry!(write!(f, "{}", text); "couldn\'t write manifest file {}", path.display());
-        bm_note!(self.nbe, "wrote manifest {}", path.display());
         self.manifest_modified = false;
         Ok(())
     }
