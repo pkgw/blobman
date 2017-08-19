@@ -9,21 +9,116 @@ provided in the `tokio-tls` Git repository.
 
 */
 
+use bytes::buf::{Buf, BufMut};
+use futures::Poll;
 use futures::future::{err, Future};
 use futures::stream::Stream;
 use hyper::{Client, Request, Method, Uri};
 use hyper::client::HttpConnector;
 use hyper::header::Location;
 use native_tls::TlsConnector;
-use std::io;
+use std::io::{self, Read, Write};
 use std::str;
 use std::sync::Arc;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
+use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_io::codec::{Decoder, Encoder, Framed, FramedParts};
 use tokio_service::Service;
 use tokio_tls::{TlsConnectorExt, TlsStream};
 
 use errors::Result;
+
+
+#[derive(Debug)]
+enum MaybeTls<T> {
+    Yes(TlsStream<T>),
+    No(T),
+}
+
+impl<T: Read + Write> Read for MaybeTls<T> {
+    // TODO: implement rest of functions in case sub-types have specialized
+    // implementations
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.read(buf),
+            MaybeTls::No(ref mut s) => s.read(buf),
+        }
+    }
+}
+
+impl<T: Read + Write> Write for MaybeTls<T> {
+    // TODO: implement rest of functions in case sub-types have specialized
+    // implementations
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.write(buf),
+            MaybeTls::No(ref mut s) => s.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.flush(),
+            MaybeTls::No(ref mut s) => s.flush(),
+        }
+    }
+}
+
+impl<T: AsyncRead + AsyncWrite> AsyncRead for MaybeTls<T> {
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        match *self {
+            MaybeTls::Yes(ref s) => s.prepare_uninitialized_buffer(buf),
+            MaybeTls::No(ref s) => s.prepare_uninitialized_buffer(buf),
+        }
+    }
+
+    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, io::Error> where Self: Sized {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.read_buf(buf),
+            MaybeTls::No(ref mut s) => s.read_buf(buf),
+        }
+    }
+
+    fn framed<C: Encoder + Decoder>(self, codec: C) -> Framed<Self, C> where Self: AsyncWrite + Sized {
+        match self {
+            MaybeTls::Yes(s) => {
+                let (parts, codec) = s.framed(codec).into_parts_and_codec();
+                Framed::from_parts(FramedParts {
+                    inner: MaybeTls::Yes(parts.inner),
+                    readbuf: parts.readbuf,
+                    writebuf: parts.writebuf,
+                }, codec)
+            },
+            MaybeTls::No(s) => {
+                let (parts, codec) = s.framed(codec).into_parts_and_codec();
+                Framed::from_parts(FramedParts {
+                    inner: MaybeTls::No(parts.inner),
+                    readbuf: parts.readbuf,
+                    writebuf: parts.writebuf,
+                }, codec)
+            },
+        }
+    }
+
+    //fn split(self) -> (ReadHalf<Self>, WriteHalf<Self>) where Self: AsyncWrite + Sized {}
+}
+
+impl<T: AsyncWrite + AsyncRead> AsyncWrite for MaybeTls<T> {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.shutdown(),
+            MaybeTls::No(ref mut s) => s.shutdown(),
+        }
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> where Self: Sized {
+        match *self {
+            MaybeTls::Yes(ref mut s) => s.write_buf(buf),
+            MaybeTls::No(ref mut s) => s.write_buf(buf),
+        }
+    }
+}
 
 
 struct HttpsConnector {
@@ -31,21 +126,22 @@ struct HttpsConnector {
     http: HttpConnector,
 }
 
-
 impl Service for HttpsConnector {
     type Request = Uri;
-    type Response = TlsStream<TcpStream>;
+    type Response = MaybeTls<TcpStream>;
     type Error = io::Error;
-    type Future = Box<Future<Item = Self::Response, Error = io::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, uri: Uri) -> Self::Future {
-        // Right now this is intended to showcase `https`, but you could also
-        // adapt this to return something like `MaybeTls<T>` where some
-        // clients resolve to TLS streams (https) and others resolve to normal
-        // TCP streams (http)
+        // The simple case:
+        if uri.scheme() == Some("http") {
+            return Box::new(self.http.call(uri).map(|tcp| MaybeTls::No(tcp)));
+        }
+
+        // We only support one other option at the moment ...
         if uri.scheme() != Some("https") {
             return err(io::Error::new(io::ErrorKind::Other,
-                                      "only works with https")).boxed()
+                                      "only HTTP and HTTPS are supported")).boxed()
         }
 
         // Look up the host that we're connecting to as we're going to validate
@@ -63,15 +159,16 @@ impl Service for HttpsConnector {
         // with the host name that's provided in the URI we extracted above.
         let tls_cx = self.tls.clone();
         Box::new(self.http.call(uri).and_then(move |tcp| {
-            tls_cx.connect_async(&host, tcp)
+            tls_cx
+                .connect_async(&host, tcp)
+                .map(|tls| MaybeTls::Yes(tls))
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         }))
     }
 }
 
 
-
-/// Download over HTTPS into a Write object.
+/// Download over HTTP or HTTPS into a Write object.
 ///
 /// Because our HTTP layer is fancy and asynchronous while the rest of our
 /// operation is synchronous, we can't just return a simple Read stream.

@@ -14,6 +14,7 @@ expects.
 #![deny(missing_docs)]
 
 extern crate app_dirs;
+extern crate bytes;
 #[macro_use] extern crate error_chain;
 extern crate futures;
 extern crate hyper;

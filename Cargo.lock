@@ -88,6 +88,7 @@ name = "blobman"
 version = "0.1.0"
 dependencies = [
  "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
