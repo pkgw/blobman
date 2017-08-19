@@ -11,8 +11,9 @@ provided in the `tokio-tls` Git repository.
 
 use futures::future::{err, Future};
 use futures::stream::Stream;
-use hyper::client::HttpConnector;
 use hyper::{Client, Request, Method, Uri};
+use hyper::client::HttpConnector;
+use hyper::header::Location;
 use native_tls::TlsConnector;
 use std::io;
 use std::str;
@@ -93,11 +94,37 @@ pub fn download<W: io::Write>(uri: &str, mut dest: W) -> Result<u64> {
     // Send off a request. This will just fetch the headers; the body won't be
     // downloaded yet.
 
-    let parsed = uri.parse()?;
-    let req = Request::new(Method::Get, parsed);
-    let response = core.run(client.request(req))?;
+    const MAX_REDIRECTS: usize = 16;
+    let mut parsed: Uri = uri.parse()?;
+    let mut req = Request::new(Method::Get, parsed.clone());
+    let mut response;
+    let mut attempt_num: usize = 0;
 
-    if !response.status().is_success() {
+    loop { // liveness checker doesn't like `for attempt_num in 0..MAX_REDIRECTS`
+        attempt_num += 1;
+        if attempt_num > MAX_REDIRECTS {
+            return err_msg!("failed to download {}: too many redirection", uri);
+        }
+
+        response = core.run(client.request(req))?;
+        let status = response.status();
+
+        if status.is_success() {
+            break;
+        }
+
+        if status.is_redirection() {
+            let loc_hdr = match response.headers().get::<Location>() {
+                Some(h) => h,
+                None => {
+                    return err_msg!("illegal redirect from {}: no Location header", parsed);
+                },
+            };
+            parsed = loc_hdr.parse()?;
+            req = Request::new(Method::Get, parsed.clone());
+            continue;
+        }
+
         return err_msg!("failed to download {}: got non-successful HTTP status {}",
                         uri, response.status());
     }
