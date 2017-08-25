@@ -6,10 +6,13 @@ Handling of the manifest of known blobs.
 
 */
 
+use serde::{Serialize, Serializer};
+use std::collections::BTreeMap;
 use std::collections::hash_map::{Entry, HashMap};
 use std::io as std_io;
 use std::io::Read;
 use std::path::{Component, PathBuf};
+use std::result::Result as StdResult;
 use toml;
 
 use digest::{DigestData, Shim};
@@ -77,7 +80,17 @@ impl BlobInfo {
 /// A table of known blobs.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
+    #[serde(serialize_with = "serialize_map_sorted")]
     blobs: HashMap<String,BlobInfo>,
+}
+
+
+/// From StackOverflow: https://stackoverflow.com/a/42723390/3760486
+fn serialize_map_sorted<S>(value: &HashMap<String, BlobInfo>, serializer: S) -> StdResult<S::Ok, S::Error>
+    where S: Serializer
+{
+    let ordered: BTreeMap<_, _> = value.iter().collect();
+    ordered.serialize(serializer)
 }
 
 
