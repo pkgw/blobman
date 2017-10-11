@@ -140,8 +140,8 @@ impl Service for HttpsConnector {
 
         // We only support one other option at the moment ...
         if uri.scheme() != Some("https") {
-            return err(io::Error::new(io::ErrorKind::Other,
-                                      "only HTTP and HTTPS are supported")).boxed()
+            return Box::new(err(io::Error::new(io::ErrorKind::Other,
+                                               "only HTTP and HTTPS are supported")))
         }
 
         // Look up the host that we're connecting to as we're going to validate
@@ -149,8 +149,8 @@ impl Service for HttpsConnector {
         let host = match uri.host() {
             Some(s) => s.to_string(),
             None =>  {
-                return err(io::Error::new(io::ErrorKind::Other,
-                                          "missing host")).boxed()
+                return Box::new(err(io::Error::new(io::ErrorKind::Other,
+                                                   "missing host")))
             }
         };
 
