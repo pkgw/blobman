@@ -77,7 +77,7 @@ fn main() {
                          .help("The name of the blob to provide")
                          .required(true)
                          .index(1)))
-        .get_matches ();
+        .get_matches();
 
     let chatter = match matches.value_of("chatter_level").unwrap() {
         "default" => ChatterLevel::Normal,
