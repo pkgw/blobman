@@ -10,29 +10,28 @@ provided in the `tokio-tls` Git repository.
 */
 
 use bytes::buf::{Buf, BufMut};
-use futures::Poll;
 use futures::future::{err, Future};
 use futures::stream::Stream;
-use hyper::{Client, Request, Method, Uri};
+use futures::Poll;
 use hyper::client::HttpConnector;
 use hyper::header::Location;
+use hyper::{Client, Method, Request, Uri};
 use native_tls::TlsConnector;
 use std::io::{self, Read, Write};
 use std::str;
 use std::sync::Arc;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
-use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_io::codec::{Decoder, Encoder, Framed, FramedParts};
+use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_service::Service;
-use tokio_tls::{TlsConnectorExt, TlsStream};
+use tokio_tls::TlsStream;
 
 use errors::Result;
 
-
 #[derive(Debug)]
 enum MaybeTls<T> {
-    Yes(TlsStream<T>),
+    Yes(native_tls::TlsStream<T>),
     No(T),
 }
 
@@ -73,31 +72,43 @@ impl<T: AsyncRead + AsyncWrite> AsyncRead for MaybeTls<T> {
         }
     }
 
-    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, io::Error> where Self: Sized {
+    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, io::Error>
+    where
+        Self: Sized,
+    {
         match *self {
             MaybeTls::Yes(ref mut s) => s.read_buf(buf),
             MaybeTls::No(ref mut s) => s.read_buf(buf),
         }
     }
 
-    fn framed<C: Encoder + Decoder>(self, codec: C) -> Framed<Self, C> where Self: AsyncWrite + Sized {
+    fn framed<C: Encoder + Decoder>(self, codec: C) -> Framed<Self, C>
+    where
+        Self: AsyncWrite + Sized,
+    {
         match self {
             MaybeTls::Yes(s) => {
                 let (parts, codec) = s.framed(codec).into_parts_and_codec();
-                Framed::from_parts(FramedParts {
-                    inner: MaybeTls::Yes(parts.inner),
-                    readbuf: parts.readbuf,
-                    writebuf: parts.writebuf,
-                }, codec)
-            },
+                Framed::from_parts(
+                    FramedParts {
+                        inner: MaybeTls::Yes(parts.inner),
+                        readbuf: parts.readbuf,
+                        writebuf: parts.writebuf,
+                    },
+                    codec,
+                )
+            }
             MaybeTls::No(s) => {
                 let (parts, codec) = s.framed(codec).into_parts_and_codec();
-                Framed::from_parts(FramedParts {
-                    inner: MaybeTls::No(parts.inner),
-                    readbuf: parts.readbuf,
-                    writebuf: parts.writebuf,
-                }, codec)
-            },
+                Framed::from_parts(
+                    FramedParts {
+                        inner: MaybeTls::No(parts.inner),
+                        readbuf: parts.readbuf,
+                        writebuf: parts.writebuf,
+                    },
+                    codec,
+                )
+            }
         }
     }
 
@@ -112,14 +123,16 @@ impl<T: AsyncWrite + AsyncRead> AsyncWrite for MaybeTls<T> {
         }
     }
 
-    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> where Self: Sized {
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error>
+    where
+        Self: Sized,
+    {
         match *self {
             MaybeTls::Yes(ref mut s) => s.write_buf(buf),
             MaybeTls::No(ref mut s) => s.write_buf(buf),
         }
     }
 }
-
 
 struct HttpsConnector {
     tls: Arc<TlsConnector>,
@@ -140,18 +153,17 @@ impl Service for HttpsConnector {
 
         // We only support one other option at the moment ...
         if uri.scheme() != Some("https") {
-            return Box::new(err(io::Error::new(io::ErrorKind::Other,
-                                               "only HTTP and HTTPS are supported")))
+            return Box::new(err(io::Error::new(
+                io::ErrorKind::Other,
+                "only HTTP and HTTPS are supported",
+            )));
         }
 
         // Look up the host that we're connecting to as we're going to validate
         // this as part of the TLS handshake.
         let host = match uri.host() {
             Some(s) => s.to_string(),
-            None =>  {
-                return Box::new(err(io::Error::new(io::ErrorKind::Other,
-                                                   "missing host")))
-            }
+            None => return Box::new(err(io::Error::new(io::ErrorKind::Other, "missing host"))),
         };
 
         // Delegate to the standard `HttpConnector` type to create a connected
@@ -160,13 +172,12 @@ impl Service for HttpsConnector {
         let tls_cx = self.tls.clone();
         Box::new(self.http.call(uri).and_then(move |tcp| {
             tls_cx
-                .connect_async(&host, tcp)
+                .connect(&host, tcp)
                 .map(|tls| MaybeTls::Yes(tls))
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         }))
     }
 }
-
 
 /// Download over HTTP or HTTPS into a Write object.
 ///
@@ -178,15 +189,15 @@ pub fn download<W: io::Write>(uri: &str, mut dest: W) -> Result<u64> {
     // Create a custom "connector" for Hyper which will route connections
     // through the `TlsConnector` we create here after routing them through
     // `HttpConnector` first.
-    let tls_cx = TlsConnector::builder()?.build()?;
+    let tls_cx = TlsConnector::builder().build()?;
     let mut connector = HttpsConnector {
         tls: Arc::new(tls_cx),
         http: HttpConnector::new(2, &core.handle()),
     };
     connector.http.enforce_http(false);
     let client = Client::configure()
-                    .connector(connector)
-                    .build(&core.handle());
+        .connector(connector)
+        .build(&core.handle());
 
     // Send off a request. This will just fetch the headers; the body won't be
     // downloaded yet.
@@ -197,7 +208,8 @@ pub fn download<W: io::Write>(uri: &str, mut dest: W) -> Result<u64> {
     let mut response;
     let mut attempt_num: usize = 0;
 
-    loop { // liveness checker doesn't like `for attempt_num in 0..MAX_REDIRECTS`
+    loop {
+        // liveness checker doesn't like `for attempt_num in 0..MAX_REDIRECTS`
         attempt_num += 1;
         if attempt_num > MAX_REDIRECTS {
             return err_msg!("failed to download {}: too many redirection", uri);
@@ -215,15 +227,18 @@ pub fn download<W: io::Write>(uri: &str, mut dest: W) -> Result<u64> {
                 Some(h) => h,
                 None => {
                     return err_msg!("illegal redirect from {}: no Location header", parsed);
-                },
+                }
             };
             parsed = loc_hdr.parse()?;
             req = Request::new(Method::Get, parsed.clone());
             continue;
         }
 
-        return err_msg!("failed to download {}: got non-successful HTTP status {}",
-                        uri, response.status());
+        return err_msg!(
+            "failed to download {}: got non-successful HTTP status {}",
+            uri,
+            response.status()
+        );
     }
 
     // Finish off our request by fetching the body.
@@ -235,19 +250,21 @@ pub fn download<W: io::Write>(uri: &str, mut dest: W) -> Result<u64> {
         stream = match core.run(stream.into_future()) {
             Err((e, _)) => {
                 return Err(e.into());
-            },
+            }
             Ok((chunk, next)) => {
                 match chunk {
-                    None => { break; },
+                    None => {
+                        break;
+                    }
                     Some(c) => {
                         n_bytes += c.len() as u64;
                         dest.write_all(&c)?;
-                    },
+                    }
                 };
                 next
             }
         };
-    };
+    }
 
     Ok(n_bytes)
 }
