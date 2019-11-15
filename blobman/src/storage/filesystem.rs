@@ -13,20 +13,18 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use digest::DigestData;
-use errors::Result;
-use io;
 use super::{StagingCookie, Storage};
-
+use crate::digest::DigestData;
+use crate::errors::Result;
+use crate::io;
 
 /// A storage backend that arranges files on the filesystem
 #[derive(Debug)]
 pub struct FilesystemStorage {
     prefix: PathBuf,
     next_staging_cookie: usize,
-    staging_paths: HashMap<usize,PathBuf>,
+    staging_paths: HashMap<usize, PathBuf>,
 }
-
 
 impl FilesystemStorage {
     /// Create and return a new FilesystemStorage object.
@@ -38,7 +36,6 @@ impl FilesystemStorage {
         }
     }
 }
-
 
 impl Storage for FilesystemStorage {
     fn get_path(&self, digest: &DigestData) -> Result<Option<PathBuf>> {
@@ -52,13 +49,13 @@ impl Storage for FilesystemStorage {
         }
     }
 
-    fn open(&self, digest: &DigestData) -> Result<Option<Box<Read>>> {
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<dyn Read>>> {
         let path = ctry!(digest.create_two_part_path(&self.prefix);
                          "couldn't make directories in {}", self.prefix.display());
-        Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<Read>))
+        Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<dyn Read>))
     }
 
-    fn start_staging<'a>(&'a mut self) -> Result<(Box<Write>, StagingCookie)> {
+    fn start_staging<'a>(&'a mut self) -> Result<(Box<dyn Write>, StagingCookie)> {
         let mut p = self.prefix.clone();
         p.push("staging.XXXXXXXX");
 
@@ -69,7 +66,10 @@ impl Storage for FilesystemStorage {
         let template = match p.to_str() {
             Some(t) => t,
             None => {
-                return err_msg!("cannot save data to destination {}: path is not Unicode-compatible", p.display());
+                return err_msg!(
+                    "cannot save data to destination {}: path is not Unicode-compatible",
+                    p.display()
+                );
             }
         };
 
@@ -77,7 +77,8 @@ impl Storage for FilesystemStorage {
 
         let cookie = self.next_staging_cookie;
         self.next_staging_cookie += 1;
-        self.staging_paths.insert(cookie, PathBuf::from(tempfile.path()));
+        self.staging_paths
+            .insert(cookie, PathBuf::from(tempfile.path()));
 
         Ok((Box::new(tempfile), cookie))
     }
@@ -89,7 +90,9 @@ impl Storage for FilesystemStorage {
         ctry!(fs::rename(&src_path, &dest_path);
               "couldn't rename {} to {}", src_path.display(), dest_path.display());
 
-        let mut perms = ctry!(fs::metadata(&dest_path); "couldn't get info for file {}", dest_path.display()).permissions();
+        let mut perms =
+            ctry!(fs::metadata(&dest_path); "couldn't get info for file {}", dest_path.display())
+                .permissions();
         perms.set_readonly(true);
         ctry!(fs::set_permissions(&dest_path, perms); "couldn\'t make file {} read-only", dest_path.display());
 

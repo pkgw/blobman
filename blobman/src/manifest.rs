@@ -7,25 +7,23 @@ Handling of the manifest of known blobs.
 */
 
 use serde::{Serialize, Serializer};
-use std::collections::BTreeMap;
 use std::collections::hash_map::{Entry, HashMap};
+use std::collections::BTreeMap;
 use std::io as std_io;
 use std::io::Read;
 use std::path::{Component, PathBuf};
 use std::result::Result as StdResult;
 use toml;
 
-use digest::{DigestData, Shim};
-use errors::Result;
-use io;
-use notify::NotificationBackend;
-use storage::Storage;
-
+use crate::digest::{DigestData, Shim};
+use crate::errors::Result;
+use crate::io;
+use crate::notify::NotificationBackend;
+use crate::storage::Storage;
 
 /// The basename used by manifest files.
 pub const MANIFEST_STEM: &'static str = ".blobs.toml";
 const PARENT_DIR: &'static str = "..";
-
 
 /// Information about a blob.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -34,7 +32,6 @@ pub struct BlobInfo {
     sha256: DigestData,
     url: Option<String>,
 }
-
 
 impl BlobInfo {
     /// Ingest a new blob and extract its properties.
@@ -46,8 +43,9 @@ impl BlobInfo {
     ///
     /// The somewhat awkward architecture here is because of how we have to
     /// interface with the async, futures-based hyper HTTP library.
-    pub fn new_from_ingest<F>(filler: F, storage: &mut Storage) -> Result<Self>
-        where F: FnOnce(&mut Shim<Box<std_io::Write>>) -> Result<u64>
+    pub fn new_from_ingest<F>(filler: F, storage: &mut dyn Storage) -> Result<Self>
+    where
+        F: FnOnce(&mut Shim<Box<dyn std_io::Write>>) -> Result<u64>,
     {
         let (cookie, digest, size) = {
             let (sink, cookie) = storage.start_staging()?;
@@ -76,23 +74,24 @@ impl BlobInfo {
     }
 }
 
-
 /// A table of known blobs.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Manifest {
     #[serde(serialize_with = "serialize_map_sorted")]
-    blobs: HashMap<String,BlobInfo>,
+    blobs: HashMap<String, BlobInfo>,
 }
 
-
 /// From StackOverflow: https://stackoverflow.com/a/42723390/3760486
-fn serialize_map_sorted<S>(value: &HashMap<String, BlobInfo>, serializer: S) -> StdResult<S::Ok, S::Error>
-    where S: Serializer
+fn serialize_map_sorted<S>(
+    value: &HashMap<String, BlobInfo>,
+    serializer: S,
+) -> StdResult<S::Ok, S::Error>
+where
+    S: Serializer,
 {
     let ordered: BTreeMap<_, _> = value.iter().collect();
     ordered.serialize(serializer)
 }
-
 
 impl Manifest {
     /// Locate manifest data on the filesystem and load them.
@@ -123,7 +122,10 @@ impl Manifest {
             if p.as_os_str().len() == 0 {
                 at_filesystem_root = false; // canonicalize() errors out for empty path
             } else {
-                for c in ctry!(p.canonicalize(); "error trying to canonicalize path {}", p.display()).components() {
+                for c in
+                    ctry!(p.canonicalize(); "error trying to canonicalize path {}", p.display())
+                        .components()
+                {
                     if let Component::Normal(_) = c {
                         // We're not at the filesystem root just yet; keep trying parent directories.
                         at_filesystem_root = false;
@@ -137,9 +139,12 @@ impl Manifest {
                 // our filesystem tree, which we treat as an empty manifest.
                 // We'll create the TOML file in the current directory if the
                 // manifest is altered.
-                return Ok((Self {
-                    blobs: HashMap::new(),
-                }, None));
+                return Ok((
+                    Self {
+                        blobs: HashMap::new(),
+                    },
+                    None,
+                ));
             }
 
             // Try a higher-level parent.
@@ -148,18 +153,21 @@ impl Manifest {
         }
     }
 
-
     /// Look up information for the named blob.
     pub fn lookup<'a>(&'a self, name: &str) -> Option<&'a BlobInfo> {
         self.blobs.get(name)
     }
 
-
     /// Register a new blob with the manifest.
     ///
     /// If a blob under the same name was already known, the old information
     /// is replaced.
-    pub fn insert_or_update<B: NotificationBackend>(&mut self, name: &str, binfo: BlobInfo, nbe: &mut B) {
+    pub fn insert_or_update<B: NotificationBackend>(
+        &mut self,
+        name: &str,
+        binfo: BlobInfo,
+        nbe: &mut B,
+    ) {
         let e = self.blobs.entry(name.to_owned());
 
         match e {
@@ -170,7 +178,7 @@ impl Manifest {
                     bm_note!(nbe, "entry for {} is unchanged", name);
                 }
                 oe.insert(binfo);
-            },
+            }
             Entry::Vacant(ve) => {
                 ve.insert(binfo);
             }

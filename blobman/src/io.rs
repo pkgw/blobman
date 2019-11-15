@@ -9,8 +9,7 @@ use std::fs::{self, File};
 use std::io::ErrorKind as IoErrorKind;
 use std::path::Path;
 
-use errors::Result;
-
+use crate::errors::Result;
 
 /// Try to open a file, returning `Ok(None)` if it does not exist.
 ///
@@ -29,7 +28,6 @@ pub fn try_open<P: AsRef<Path>>(path: P) -> Result<Option<File>> {
         }
     }
 }
-
 
 /// Try to remove a file, ignoring the failure if it does not exist.
 pub fn try_remove_file<P: AsRef<Path>>(path: P) -> Result<()> {

@@ -11,8 +11,8 @@ engine. (Which the author of this module also wrote.)
 */
 
 use serde;
-pub use sha2::Sha256 as DigestComputer;
 pub use sha2::Digest;
+pub use sha2::Sha256 as DigestComputer;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -22,8 +22,7 @@ use std::result::Result as StdResult;
 use std::str::FromStr;
 use std::string::ToString;
 
-use errors::{Error, ErrorKind, Result};
-
+use crate::errors::{Error, ErrorKind, Result};
 
 /// Return *bytes* as represented in a hexadecimal string.
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
@@ -33,7 +32,6 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
         .collect::<Vec<_>>()
         .concat()
 }
-
 
 /// Decode a hexadecimal string into a byte vector.
 pub fn hex_to_bytes(text: &str, dest: &mut [u8]) -> Result<()> {
@@ -45,12 +43,11 @@ pub fn hex_to_bytes(text: &str, dest: &mut [u8]) -> Result<()> {
     }
 
     for i in 0..n {
-        dest[i] = u8::from_str_radix(&text[i*2..(i+1)*2], 16)?;
+        dest[i] = u8::from_str_radix(&text[i * 2..(i + 1) * 2], 16)?;
     }
 
     Ok(())
 }
-
 
 // The specific implementation we're using: SHA256.
 
@@ -61,9 +58,8 @@ pub fn create() -> DigestComputer {
     Default::default()
 }
 
-
 /// A vector of bytes holding a cryptographic digest.
-#[derive(Copy,Clone,Debug,Eq,PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct DigestData([u8; N_BYTES]);
 
 impl DigestData {
@@ -92,7 +88,6 @@ impl DigestData {
         p.push(bytes_to_hex(&self.0[1..]));
         Ok(p)
     }
-
 }
 
 impl ToString for DigestData {
@@ -100,7 +95,6 @@ impl ToString for DigestData {
         bytes_to_hex(&self.0)
     }
 }
-
 
 impl FromStr for DigestData {
     type Err = Error;
@@ -112,9 +106,11 @@ impl FromStr for DigestData {
     }
 }
 
-
 impl<'de> serde::Deserialize<'de> for DigestData {
-    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error> where D: serde::Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
         struct DigestDataVisitor;
 
         impl<'de> serde::de::Visitor<'de> for DigestDataVisitor {
@@ -124,7 +120,10 @@ impl<'de> serde::Deserialize<'de> for DigestData {
                 formatter.write_str("a hexadecimal string")
             }
 
-            fn visit_str<E>(self, v: &str) -> StdResult<Self::Value, E> where E: serde::de::Error {
+            fn visit_str<E>(self, v: &str) -> StdResult<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
                 let mut result = DigestData::zeros();
                 match hex_to_bytes(v, &mut result.0) {
                     Ok(_) => Ok(result),
@@ -137,13 +136,14 @@ impl<'de> serde::Deserialize<'de> for DigestData {
     }
 }
 
-
 impl serde::Serialize for DigestData {
-    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error> where S: serde::Serializer {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
         serializer.serialize_str(self.to_string().as_ref())
     }
 }
-
 
 impl From<DigestComputer> for DigestData {
     fn from(s: DigestComputer) -> DigestData {
@@ -153,7 +153,6 @@ impl From<DigestComputer> for DigestData {
         result
     }
 }
-
 
 /// A helper to compute a digest as a stream is processed
 pub struct Shim<W: io::Write> {

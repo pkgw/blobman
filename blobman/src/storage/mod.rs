@@ -9,12 +9,10 @@ Backends for storing blobs.
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use digest::DigestData;
-use errors::Result;
-
+use crate::digest::DigestData;
+use crate::errors::Result;
 
 pub mod filesystem;
-
 
 /// An type alias referring to a particular staging job.
 pub type StagingCookie = usize;
@@ -38,14 +36,14 @@ pub trait Storage {
     ///
     /// Blobs are identified by their digests. If the blob is not present in
     /// this Storage, that's OK; `Ok(None)` should be returned.
-    fn open(&self, digest: &DigestData) -> Result<Option<Box<Read>>>;
+    fn open(&self, digest: &DigestData) -> Result<Option<Box<dyn Read>>>;
 
     /// Start staging a new file.
     ///
     /// Staging is performed by creating a "stager" object. Blob data is
     /// written to the it, and then a wrap-up function is called to complete
     /// the transaction.
-    fn start_staging(&mut self) -> Result<(Box<Write>, StagingCookie)>;
+    fn start_staging(&mut self) -> Result<(Box<dyn Write>, StagingCookie)>;
 
     /// Called when all blob data have been processed.
     ///

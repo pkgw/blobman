@@ -17,9 +17,8 @@ use std::fmt::Arguments;
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use errors::Error;
-use super::{ChatterLevel, NotificationKind, NotificationBackend};
-
+use super::{ChatterLevel, NotificationBackend, NotificationKind};
+use crate::errors::Error;
 
 /// A notification backend that writes colorized output to the terminal.
 ///
@@ -36,7 +35,6 @@ pub struct TermcolorNotificationBackend {
     severe_spec: ColorSpec,
     fatal_spec: ColorSpec,
 }
-
 
 impl TermcolorNotificationBackend {
     /// Create a new TermcolorNotificationBackend.
@@ -68,7 +66,10 @@ impl TermcolorNotificationBackend {
         }
     }
 
-    fn styled<F>(&mut self, kind: NotificationKind, f: F) where F: FnOnce(&mut StandardStream) {
+    fn styled<F>(&mut self, kind: NotificationKind, f: F)
+    where
+        F: FnOnce(&mut StandardStream),
+    {
         if kind == NotificationKind::Note && self.chatter <= ChatterLevel::Minimal {
             return;
         }
@@ -85,7 +86,10 @@ impl TermcolorNotificationBackend {
         stream.reset().expect("failed to clear color");
     }
 
-    fn with_stream<F>(&mut self, kind: NotificationKind, f: F) where F: FnOnce(&mut StandardStream) {
+    fn with_stream<F>(&mut self, kind: NotificationKind, f: F)
+    where
+        F: FnOnce(&mut StandardStream),
+    {
         if kind == NotificationKind::Note && self.chatter <= ChatterLevel::Minimal {
             return;
         }
@@ -119,7 +123,6 @@ impl TermcolorNotificationBackend {
         });
     }
 
-
     // Helpers for the CLI program that aren't needed by the internal bits,
     // so we put them here to minimize the cross-section of the NotificationBackend
     // trait.
@@ -132,19 +135,26 @@ impl TermcolorNotificationBackend {
         let mut prefix = "error:";
 
         for item in err.iter() {
-            self.generic_message(NotificationKind::Severe, Some(prefix), format_args!("{}", item));
+            self.generic_message(
+                NotificationKind::Severe,
+                Some(prefix),
+                format_args!("{}", item),
+            );
             prefix = "caused by:";
         }
 
         if let Some(backtrace) = err.backtrace() {
-            self.generic_message(NotificationKind::Severe, Some("debugging:"), format_args!("backtrace follows:"));
+            self.generic_message(
+                NotificationKind::Severe,
+                Some("debugging:"),
+                format_args!("backtrace follows:"),
+            );
             self.with_stream(NotificationKind::Severe, |s| {
                 writeln!(s, "{:?}", backtrace).expect("backtrace dump failed");
             });
         }
     }
 }
-
 
 impl NotificationBackend for TermcolorNotificationBackend {
     fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>) {

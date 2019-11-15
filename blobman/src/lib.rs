@@ -15,12 +15,14 @@ expects.
 
 extern crate app_dirs;
 extern crate bytes;
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate error_chain;
 extern crate futures;
 extern crate hyper;
 extern crate mkstemp;
 extern crate native_tls;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde;
 extern crate sha2;
 extern crate termcolor;
@@ -30,15 +32,16 @@ extern crate tokio_service;
 extern crate tokio_tls;
 extern crate toml;
 
-#[macro_use] pub mod notify; // must come first to provide macros for other modules
-#[macro_use] pub mod errors;
+#[macro_use]
+pub mod notify; // must come first to provide macros for other modules
+#[macro_use]
+pub mod errors;
 pub mod config;
 pub mod digest;
 pub mod http;
 pub mod io;
 pub mod manifest;
 pub mod storage;
-
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -47,9 +50,10 @@ use std::str::FromStr;
 
 use errors::{Error, Result};
 
-
-const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {name: "blobman", author: "BlobmanProject"};
-
+const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {
+    name: "blobman",
+    author: "BlobmanProject",
+};
 
 /// Different ways that we can behave when ingesting a new blob, depending on
 /// whether a blob of the same name or same contents already exists.
@@ -71,7 +75,7 @@ impl IngestMode {
     /// purpose of this function is to assist the CLI in parsing command-line
     /// arguments that map to IngestMode values.
     pub fn stringifications() -> &'static [&'static str] {
-        static S: &'static[&str] = &["update", "trust"];
+        static S: &'static [&str] = &["update", "trust"];
         S
     }
 }
@@ -90,7 +94,6 @@ impl FromStr for IngestMode {
     }
 }
 
-
 /// A session in which we do stuff.
 pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     config: &'a config::UserConfig,
@@ -99,7 +102,6 @@ pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     manifest_path: Option<PathBuf>,
     manifest_modified: bool,
 }
-
 
 impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     /// Create and return a new Session.
@@ -115,24 +117,30 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         })
     }
 
-
     /// Get a storage backend for this session.
     ///
     /// TODO: Maybe we'll one day have multiple backends and some fancy way to
     /// decide which one to use. For now we just use one. We do, however, use
     /// a trait object since we envision have runtime-configurable backends
     /// here.
-    pub fn get_storage(&mut self) -> Result<Box<storage::Storage>> {
+    pub fn get_storage(&mut self) -> Result<Box<dyn storage::Storage>> {
         self.config.get_storage(self.nbe)
     }
 
     /// Fetch a blob from a URL and ingest it.
-    pub fn ingest_from_url(&mut self, mode: IngestMode, url: &str, name: Option<&str>) -> Result<()> {
+    pub fn ingest_from_url(
+        &mut self,
+        mode: IngestMode,
+        url: &str,
+        name: Option<&str>,
+    ) -> Result<()> {
         let parsed: hyper::Uri = url.parse()?;
         let file_name = match name {
             Some(n) => n,
             None => match parsed.path().split("/").last() {
-                None => { return err_msg!("cannot extract a filename from the URL {}", url); },
+                None => {
+                    return err_msg!("cannot extract a filename from the URL {}", url);
+                }
                 Some(s) => s,
             },
         };
@@ -145,7 +153,8 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             }
         }
 
-        let mut binfo = manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
+        let mut binfo =
+            manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
         binfo.set_url(url);
         self.manifest.insert_or_update(file_name, binfo, self.nbe);
         self.manifest_modified = true;
@@ -153,14 +162,14 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         Ok(())
     }
 
-
     /// Rewrite the manifest if needed.
     pub fn rewrite_manifest(&mut self) -> Result<()> {
         if !self.manifest_modified {
             return Ok(());
         }
 
-        let path = self.manifest_path
+        let path = self
+            .manifest_path
             .as_ref()
             .map(|pb| pb.as_ref())
             .unwrap_or_else(|| Path::new(manifest::MANIFEST_STEM));
@@ -170,7 +179,6 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         self.manifest_modified = false;
         Ok(())
     }
-
 
     /// Provide a blob in the current directory.
     ///
@@ -182,12 +190,16 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         let storage_path = {
             let binfo = match self.manifest.lookup(name) {
                 Some(b) => b,
-                None => { return err_msg!("no known blob named \"{}\"", name); },
+                None => {
+                    return err_msg!("no known blob named \"{}\"", name);
+                }
             };
 
             match storage.get_path(binfo.digest())? {
                 Some(p) => p,
-                None => { return err_msg!("blob \"{}\" not available as standalone file", name); },
+                None => {
+                    return err_msg!("blob \"{}\" not available as standalone file", name);
+                }
             }
         };
 
@@ -201,19 +213,22 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         Ok(())
     }
 
-
     /// Get a Read stream to the named blob.
-    pub fn open_blob(&mut self, name: &str) -> Result<Box<Read>> {
+    pub fn open_blob(&mut self, name: &str) -> Result<Box<dyn Read>> {
         let storage = ctry!(self.get_storage(); "cannot open storage backend");
 
         let binfo = match self.manifest.lookup(name) {
             Some(b) => b,
-            None => { return err_msg!("no known blob named \"{}\"", name); },
+            None => {
+                return err_msg!("no known blob named \"{}\"", name);
+            }
         };
 
         match storage.open(binfo.digest())? {
             Some(r) => Ok(r),
-            None => { return err_msg!("blob \"{}\" not available", name); },
+            None => {
+                return err_msg!("blob \"{}\" not available", name);
+            }
         }
     }
 }

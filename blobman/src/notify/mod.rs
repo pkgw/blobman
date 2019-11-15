@@ -14,13 +14,13 @@ engine. (Which the author of this module also wrote.)
 
 */
 
-#[macro_use] pub mod termcolor;
+#[macro_use]
+pub mod termcolor;
 
 use std::cmp;
 use std::fmt::Arguments;
 
-use errors::Error;
-
+use crate::errors::Error;
 
 /// How chatty the notification system should be.
 #[repr(usize)]
@@ -54,7 +54,6 @@ impl Ord for ChatterLevel {
     }
 }
 
-
 /// The kind of notification that is being produced.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum NotificationKind {
@@ -71,7 +70,6 @@ pub enum NotificationKind {
     Fatal,
 }
 
-
 /// Trait for type that handle notifications to the user.
 pub trait NotificationBackend {
     /// Notify the user about an event.
@@ -80,7 +78,6 @@ pub trait NotificationBackend {
     /// be reported after the main message.
     fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>);
 }
-
 
 /// Send an informational notification to the user.
 ///
@@ -153,25 +150,23 @@ macro_rules! bm_fatal {
     };
 }
 
-
 /// A no-op notification backend.
 ///
 /// This empty structure implements the NotificationBackend trait. Its
 /// `notify()` function does nothing.
 #[derive(Clone, Copy, Debug)]
-pub struct NoopNotificationBackend { }
+pub struct NoopNotificationBackend {}
 
 impl NoopNotificationBackend {
     /// Create a new NoopNotificationBackend object.
     pub fn new() -> NoopNotificationBackend {
-        NoopNotificationBackend { }
+        NoopNotificationBackend {}
     }
 }
 
 impl NotificationBackend for NoopNotificationBackend {
     fn notify(&mut self, _kind: NotificationKind, _args: Arguments, _err: Option<Error>) {}
 }
-
 
 #[derive(Debug)]
 struct NotificationData {
@@ -201,7 +196,6 @@ impl BufferingNotificationBackend {
         }
     }
 }
-
 
 impl NotificationBackend for BufferingNotificationBackend {
     fn notify(&mut self, kind: NotificationKind, args: Arguments, err: Option<Error>) {

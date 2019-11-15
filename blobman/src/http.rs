@@ -25,9 +25,8 @@ use tokio_core::reactor::Core;
 use tokio_io::codec::{Decoder, Encoder, Framed, FramedParts};
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_service::Service;
-use tokio_tls::TlsStream;
 
-use errors::Result;
+use crate::errors::Result;
 
 #[derive(Debug)]
 enum MaybeTls<T> {
@@ -143,7 +142,7 @@ impl Service for HttpsConnector {
     type Request = Uri;
     type Response = MaybeTls<TcpStream>;
     type Error = io::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, uri: Uri) -> Self::Future {
         // The simple case:
