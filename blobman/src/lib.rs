@@ -22,7 +22,7 @@ pub mod manifest;
 pub mod notify;
 pub mod storage;
 
-use reqwest::Url;
+use reqwest::{self, Url};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -81,6 +81,7 @@ pub struct Session<'a, B: 'a + notify::NotificationBackend> {
     manifest: manifest::Manifest,
     manifest_path: Option<PathBuf>,
     manifest_modified: bool,
+    http_client: reqwest::Client,
 }
 
 impl<'a, B: notify::NotificationBackend> Session<'a, B> {
@@ -94,6 +95,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             manifest: manifest,
             manifest_path: manifest_path,
             manifest_modified: false,
+            http_client: reqwest::Client::new(),
         })
     }
 
@@ -133,8 +135,10 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             }
         }
 
-        let mut binfo =
-            manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
+        let mut binfo = manifest::BlobInfo::new_from_ingest(
+            |w| http::download(&mut self.http_client, url, w),
+            &mut *storage,
+        )?;
         binfo.set_url(url);
         self.manifest.insert_or_update(file_name, binfo, self.nbe);
         self.manifest_modified = true;
