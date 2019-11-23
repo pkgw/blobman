@@ -17,6 +17,7 @@ use app_dirs;
 use error_chain::error_chain;
 use std::{convert, io, num};
 use toml;
+use url;
 
 error_chain! {
     types {
@@ -27,6 +28,7 @@ error_chain! {
         AppDirs(app_dirs::AppDirsError) #[doc = "An error from the [app_dirs](https://docs.rs/app_dirs) crate"];
         Io(io::Error) #[doc = "An I/O-related error."];
         ParseInt(num::ParseIntError) #[doc = "An error related to parsing integers."];
+        ParseUrl(url::ParseError) #[doc = "An error related to parsing URLs."];
         TomlDe(toml::de::Error) #[doc = "A deserialization error from the [toml](https://docs.rs/toml) crate."];
         TomlSer(toml::ser::Error) #[doc = "A serialization error from the [toml](https://docs.rs/toml) crate."];
     }

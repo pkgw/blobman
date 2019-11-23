@@ -22,6 +22,7 @@ pub mod manifest;
 pub mod notify;
 pub mod storage;
 
+use reqwest::Url;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -109,37 +110,36 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     /// Fetch a blob from a URL and ingest it.
     pub fn ingest_from_url(
         &mut self,
-        _mode: IngestMode,
-        _url: &str,
-        _name: Option<&str>,
+        mode: IngestMode,
+        url: &str,
+        name: Option<&str>,
     ) -> Result<()> {
-        err_msg!("agh")
-        // let parsed: hyper::Uri = url.parse()?;
-        // let file_name = match name {
-        //     Some(n) => n,
-        //     None => match parsed.path().split("/").last() {
-        //         None => {
-        //             return err_msg!("cannot extract a filename from the URL {}", url);
-        //         }
-        //         Some(s) => s,
-        //     },
-        // };
-        //
-        // let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
-        //
-        // if let IngestMode::TrustExisting = mode {
-        //     if self.manifest.lookup(file_name).is_some() {
-        //         return Ok(());
-        //     }
-        // }
-        //
-        // let mut binfo =
-        //     manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
-        // binfo.set_url(url);
-        // self.manifest.insert_or_update(file_name, binfo, self.nbe);
-        // self.manifest_modified = true;
-        //
-        // Ok(())
+        let parsed = Url::parse(url)?;
+        let file_name = match name {
+            Some(n) => n,
+            None => match parsed.path().split("/").last() {
+                None => {
+                    return err_msg!("cannot extract a filename from the URL {}", url);
+                }
+                Some(s) => s,
+            },
+        };
+
+        let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
+
+        if let IngestMode::TrustExisting = mode {
+            if self.manifest.lookup(file_name).is_some() {
+                return Ok(());
+            }
+        }
+
+        let mut binfo =
+            manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
+        binfo.set_url(url);
+        self.manifest.insert_or_update(file_name, binfo, self.nbe);
+        self.manifest_modified = true;
+
+        Ok(())
     }
 
     /// Rewrite the manifest if needed.
