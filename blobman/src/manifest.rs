@@ -7,6 +7,7 @@ Handling of the manifest of known blobs.
 */
 
 use serde::{Serialize, Serializer};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::BTreeMap;
 use std::io as std_io;
@@ -20,6 +21,7 @@ use crate::errors::Result;
 use crate::io;
 use crate::notify::NotificationBackend;
 use crate::storage::Storage;
+use crate::{bm_note, ctry};
 
 /// The basename used by manifest files.
 pub const MANIFEST_STEM: &'static str = ".blobs.toml";

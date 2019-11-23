@@ -4,6 +4,7 @@
 //! Configuration of the blobman framework.
 
 use app_dirs::{app_dir, app_root, AppDataType};
+use serde_derive::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -13,6 +14,7 @@ use crate::errors::Result;
 use crate::io;
 use crate::notify::NotificationBackend;
 use crate::storage::{filesystem, Storage};
+use crate::{bm_note, bm_warning, err_msg};
 
 const DEFAULT_CONFIG: &'static str = r#"[[storage]]
 location = {type = "user_cache", loc = "blobman"}
@@ -73,7 +75,7 @@ impl StorageInfo {
 impl UserConfig {
     /// Read the user-level configuration data.
     pub fn open<B: NotificationBackend>(nbe: &mut B) -> Result<UserConfig> {
-        let mut cfg_path = app_root(AppDataType::UserConfig, &create::APP_INFO)?;
+        let mut cfg_path = app_root(AppDataType::UserConfig, &crate::APP_INFO)?;
         cfg_path.push("config.toml");
 
         let config = match io::try_open(&cfg_path)? {

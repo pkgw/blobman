@@ -17,6 +17,7 @@ use super::{StagingCookie, Storage};
 use crate::digest::DigestData;
 use crate::errors::Result;
 use crate::io;
+use crate::{ctry, err_msg};
 
 /// A storage backend that arranges files on the filesystem
 #[derive(Debug)]

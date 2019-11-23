@@ -13,34 +13,13 @@ expects.
 #![recursion_limit = "1024"] // "error_chain can recurse deeply"
 #![deny(missing_docs)]
 
-extern crate app_dirs;
-extern crate bytes;
-#[macro_use]
-extern crate error_chain;
-extern crate futures;
-extern crate hyper;
-extern crate mkstemp;
-extern crate native_tls;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate sha2;
-extern crate termcolor;
-extern crate tokio_core;
-extern crate tokio_io;
-extern crate tokio_service;
-extern crate tokio_tls;
-extern crate toml;
-
-#[macro_use]
-pub mod notify; // must come first to provide macros for other modules
-#[macro_use]
-pub mod errors;
 pub mod config;
 pub mod digest;
+pub mod errors;
 pub mod http;
 pub mod io;
 pub mod manifest;
+pub mod notify;
 pub mod storage;
 
 use std::fs::{self, File};
@@ -130,36 +109,37 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     /// Fetch a blob from a URL and ingest it.
     pub fn ingest_from_url(
         &mut self,
-        mode: IngestMode,
-        url: &str,
-        name: Option<&str>,
+        _mode: IngestMode,
+        _url: &str,
+        _name: Option<&str>,
     ) -> Result<()> {
-        let parsed: hyper::Uri = url.parse()?;
-        let file_name = match name {
-            Some(n) => n,
-            None => match parsed.path().split("/").last() {
-                None => {
-                    return err_msg!("cannot extract a filename from the URL {}", url);
-                }
-                Some(s) => s,
-            },
-        };
-
-        let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
-
-        if let IngestMode::TrustExisting = mode {
-            if self.manifest.lookup(file_name).is_some() {
-                return Ok(());
-            }
-        }
-
-        let mut binfo =
-            manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
-        binfo.set_url(url);
-        self.manifest.insert_or_update(file_name, binfo, self.nbe);
-        self.manifest_modified = true;
-
-        Ok(())
+        err_msg!("agh")
+        // let parsed: hyper::Uri = url.parse()?;
+        // let file_name = match name {
+        //     Some(n) => n,
+        //     None => match parsed.path().split("/").last() {
+        //         None => {
+        //             return err_msg!("cannot extract a filename from the URL {}", url);
+        //         }
+        //         Some(s) => s,
+        //     },
+        // };
+        //
+        // let mut storage = ctry!(self.get_storage(); "cannot open storage backend");
+        //
+        // if let IngestMode::TrustExisting = mode {
+        //     if self.manifest.lookup(file_name).is_some() {
+        //         return Ok(());
+        //     }
+        // }
+        //
+        // let mut binfo =
+        //     manifest::BlobInfo::new_from_ingest(|w| http::download(url, w), &mut *storage)?;
+        // binfo.set_url(url);
+        // self.manifest.insert_or_update(file_name, binfo, self.nbe);
+        // self.manifest_modified = true;
+        //
+        // Ok(())
     }
 
     /// Rewrite the manifest if needed.
