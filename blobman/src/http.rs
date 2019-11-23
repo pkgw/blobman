@@ -9,10 +9,10 @@ provided in the `tokio-tls` Git repository.
 
 */
 
-use futures;
 use reqwest;
 use std::io;
 use std::str;
+use tokio::runtime::Runtime;
 
 use crate::errors::Result;
 
@@ -25,7 +25,8 @@ pub fn download<W: io::Write>(
     uri: &str,
     dest: W,
 ) -> Result<u64> {
-    futures::executor::block_on(download_async(client, uri, dest))
+    let rt = Runtime::new()?;
+    rt.block_on(download_async(client, uri, dest))
 }
 
 
