@@ -14,10 +14,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use super::{StagingCookie, Storage};
-use crate::digest::DigestData;
-use crate::errors::Result;
-use crate::io;
-use crate::{ctry, err_msg};
+use crate::{ctry, digest::DigestData, err_msg, errors::Result, io};
 
 /// A storage backend that arranges files on the filesystem.
 #[derive(Debug)]
