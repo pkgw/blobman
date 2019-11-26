@@ -19,7 +19,7 @@ use crate::errors::Result;
 use crate::io;
 use crate::{ctry, err_msg};
 
-/// A storage backend that arranges files on the filesystem
+/// A storage backend that arranges files on the filesystem.
 #[derive(Debug)]
 pub struct FilesystemStorage {
     prefix: PathBuf,

@@ -10,8 +10,8 @@ engine. (Which the author of this module also wrote.)
 
 */
 
-// TODO: make this module a feature that can be disabled if the user doesn't want to
-// link with termcolor
+// TODO: make this module a feature that can be disabled if the user doesn't
+// want to link with termcolor
 
 use std::fmt::Arguments;
 use std::io::Write;

@@ -60,10 +60,12 @@ pub enum NotificationKind {
     /// An informational notice.
     Note,
 
-    /// Warning of an unusual condition; the program will likely perform as intended.
+    /// Warning of an unusual condition; the program will likely perform as
+    /// intended.
     Warning,
 
-    /// Notification of a severe problem; the program will likely fail but will attempt to contine.
+    /// Notification of a severe problem; the program will likely fail but
+    /// will attempt to contine.
     Severe,
 
     /// Notification of a fatal error; the program must give up.
