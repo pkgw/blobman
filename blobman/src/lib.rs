@@ -120,7 +120,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
         let file_name = match name {
             Some(n) => n,
             None => match parsed.path().split("/").last() {
-                None => {
+                None | Some("") => {
                     return err_msg!("cannot extract a filename from the URL {}", url);
                 }
                 Some(s) => s,
