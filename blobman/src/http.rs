@@ -1,47 +1,23 @@
-// Copyright 2017 Peter Williams and collaborators
+// Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-Retrieving blobs over HTTP(S).
+//! Retrieving blobs over HTTP(S).
+//!
+//! With the current state of the Rust/tokio/reqwest async ecosystem, almost
+//! everything Just Works, but we need to implement a semi-hacky async trait
+//! to be future-proof for reading data from sources that aren't reqwest HTTP
+//! response.
 
-This code is very directly derived from the `examples/hyper-client.rs` file
-provided in the `tokio-tls` Git repository.
-
-*/
-
+use async_trait::async_trait;
+use bytes::Bytes;
 use reqwest;
-use std::io;
-use std::str;
-use tokio::runtime::Runtime;
 
-use crate::errors::Result;
-
-/// Download over HTTP or HTTPS into a Write object.
-///
-/// Because our HTTP layer is fancy and asynchronous while the rest of our
-/// operation is synchronous, we can't just return a simple Read stream.
-pub fn download<W: io::Write>(
-    client: &mut reqwest::Client,
-    uri: &str,
-    dest: W,
-) -> Result<u64> {
-    let rt = Runtime::new()?;
-    rt.block_on(download_async(client, uri, dest))
-}
+use crate::{errors::Result, storage::AsyncChunks};
 
 
-async fn download_async<W: io::Write>(
-    client: &mut reqwest::Client,
-    uri: &str,
-    mut dest: W,
-) -> Result<u64> {
-    let mut resp = client.get(uri).send().await?;
-    let mut n_bytes = 0;
-
-    while let Some(chunk) = resp.chunk().await? {
-        n_bytes += chunk.len() as u64;
-        dest.write_all(&chunk)?;
+#[async_trait]
+impl AsyncChunks for reqwest::Response {
+    async fn get_chunk(&mut self) -> Result<Option<Bytes>> {
+        Ok(self.chunk().await?)
     }
-
-    Ok(n_bytes)
 }

@@ -6,22 +6,26 @@ Storing blobs on the filesystem.
 
 */
 
+use async_trait::async_trait;
 use mkstemp::TempFile;
-use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use super::{StagingCookie, Storage};
-use crate::{ctry, digest::DigestData, err_msg, errors::Result, io};
+use super::{AsyncChunks, Storage};
+use crate::{
+    ctry,
+    digest::{Digest, DigestComputer, DigestData},
+    err_msg,
+    errors::Result,
+    io,
+};
 
 /// A storage backend that arranges files on the filesystem.
 #[derive(Debug)]
 pub struct FilesystemStorage {
     prefix: PathBuf,
-    next_staging_cookie: usize,
-    staging_paths: HashMap<usize, PathBuf>,
 }
 
 impl FilesystemStorage {
@@ -29,12 +33,11 @@ impl FilesystemStorage {
     pub fn new<P: AsRef<OsStr>>(prefix: &P) -> Self {
         Self {
             prefix: PathBuf::from(prefix),
-            next_staging_cookie: 0,
-            staging_paths: HashMap::new(),
         }
     }
 }
 
+#[async_trait]
 impl Storage for FilesystemStorage {
     fn get_path(&self, digest: &DigestData) -> Result<Option<PathBuf>> {
         let path = ctry!(digest.create_two_part_path(&self.prefix);
@@ -53,7 +56,10 @@ impl Storage for FilesystemStorage {
         Ok(io::try_open(path)?.map(|f| Box::new(f) as Box<dyn Read>))
     }
 
-    fn start_staging<'a>(&'a mut self) -> Result<(Box<dyn Write>, StagingCookie)> {
+    async fn ingest(
+        &mut self,
+        mut source: Box<dyn AsyncChunks + Send>,
+    ) -> Result<(u64, DigestData)> {
         let mut p = self.prefix.clone();
         p.push("staging.XXXXXXXX");
 
@@ -71,22 +77,40 @@ impl Storage for FilesystemStorage {
             }
         };
 
-        let tempfile = ctry!(TempFile::new(template, false); "couldn\'t create temporary file with template {}", template);
+        // Stream into the tempfile.
 
-        let cookie = self.next_staging_cookie;
-        self.next_staging_cookie += 1;
-        self.staging_paths
-            .insert(cookie, PathBuf::from(tempfile.path()));
+        let mut computer: DigestComputer = Default::default();
+        let mut total_size = 0;
 
-        Ok((Box::new(tempfile), cookie))
-    }
+        let temp_path = {
+            let mut tempfile = ctry!(
+                TempFile::new(template, false);
+                "couldn\'t create temporary file with template {}", template
+            );
+            let temp_path = tempfile.path().to_owned();
 
-    fn finish_staging(&mut self, cookie: StagingCookie, digest: &DigestData) -> Result<()> {
-        let src_path = self.staging_paths.remove(&cookie).unwrap();
-        let dest_path = ctry!(digest.create_two_part_path(&self.prefix);
-                              "couldn't make directories in {}", self.prefix.display());
-        ctry!(fs::rename(&src_path, &dest_path);
-              "couldn't rename {} to {}", src_path.display(), dest_path.display());
+            // TODO: clean up from errors!!!
+
+            while let Some(data) = source.get_chunk().await? {
+                total_size += data.len() as u64;
+                computer.input(&data);
+                tempfile.write_all(&data)?;
+            }
+
+            temp_path
+        };
+
+        // Finalize
+
+        let digest: DigestData = computer.into();
+        let dest_path = ctry!(
+            digest.create_two_part_path(&self.prefix);
+            "couldn't make directories in {}", self.prefix.display()
+        );
+        ctry!(
+            fs::rename(&temp_path, &dest_path);
+            "couldn't rename {} to {}", temp_path, dest_path.display()
+        );
 
         let mut perms =
             ctry!(fs::metadata(&dest_path); "couldn't get info for file {}", dest_path.display())
@@ -94,6 +118,6 @@ impl Storage for FilesystemStorage {
         perms.set_readonly(true);
         ctry!(fs::set_permissions(&dest_path, perms); "couldn\'t make file {} read-only", dest_path.display());
 
-        Ok(())
+        Ok((total_size, digest))
     }
 }

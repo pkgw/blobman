@@ -110,7 +110,7 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
     }
 
     /// Fetch a blob from a URL and ingest it.
-    pub fn ingest_from_url(
+    pub async fn ingest_from_url(
         &mut self,
         mode: IngestMode,
         url: &str,
@@ -135,10 +135,9 @@ impl<'a, B: notify::NotificationBackend> Session<'a, B> {
             }
         }
 
-        let mut binfo = manifest::BlobInfo::new_from_ingest(
-            |w| http::download(&mut self.http_client, url, w),
-            &mut *storage,
-        )?;
+        let response = self.http_client.get(url).send().await?;
+        let mut binfo = manifest::BlobInfo::new_from_ingest(Box::new(response), &mut storage).await?;
+
         binfo.set_url(url);
         self.manifest.insert_or_update(file_name, binfo, self.nbe);
         self.manifest_modified = true;

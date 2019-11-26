@@ -20,5 +20,6 @@ doc = false
 [workspace]
 
 [dependencies]
-clap = "^2.26"
 blobman = { version = "0.1.0", path = "blobman" }
+clap = "^2.26"
+tokio = "^0.2.0-alpha.6"

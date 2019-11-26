@@ -10,18 +10,20 @@ use serde::{Serialize, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::BTreeMap;
-use std::io as std_io;
 use std::io::Read;
 use std::path::{Component, PathBuf};
 use std::result::Result as StdResult;
 use toml;
 
-use crate::digest::{DigestData, Shim};
-use crate::errors::Result;
-use crate::io;
-use crate::notify::NotificationBackend;
-use crate::storage::Storage;
-use crate::{bm_note, ctry};
+use crate::{
+    digest::DigestData,
+    errors::Result,
+    io,
+    notify::NotificationBackend,
+    storage::{AsyncChunks, Storage},
+    bm_note,
+    ctry,
+};
 
 /// The basename used by manifest files.
 pub const MANIFEST_STEM: &'static str = ".blobs.toml";
@@ -39,25 +41,14 @@ impl BlobInfo {
     /// Ingest a new blob and extract its properties.
     ///
     /// The newly-ingested blob is staged in the storage area *storage*. The
-    /// staging happens by calling the function *filler*, which writes data to
-    /// a destination that this function hands to it. Upon successful
-    /// completion we create a BlobInfo object summarizing the blob contents.
-    ///
-    /// The somewhat awkward architecture here is because of how we have to
-    /// interface with the async, futures-based hyper HTTP library.
-    pub fn new_from_ingest<F>(filler: F, storage: &mut dyn Storage) -> Result<Self>
-    where
-        F: FnOnce(&mut Shim<Box<dyn std_io::Write>>) -> Result<u64>,
-    {
-        let (cookie, digest, size) = {
-            let (sink, cookie) = storage.start_staging()?;
-            let mut shim = Shim::new(sink);
-            let size = filler(&mut shim)?;
-            let (_sink, digest) = shim.finish();
-            (cookie, digest, size)
-        };
-        storage.finish_staging(cookie, &digest)?;
-
+    /// staging happens by reading asynchronously from *source*. Upon
+    /// successful completion we create a BlobInfo object summarizing the blob
+    /// contents.
+    pub async fn new_from_ingest(
+        source: Box<dyn AsyncChunks + Send>,
+        storage: &mut Box<dyn Storage>,
+    ) -> Result<Self> {
+        let (size, digest) = storage.ingest(source).await?;
         Ok(Self {
             size: size,
             sha256: digest,

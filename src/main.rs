@@ -1,19 +1,24 @@
 // Copyright 2017 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-#[macro_use] extern crate blobman;
+#[macro_use]
+extern crate blobman;
 extern crate clap;
 
 use blobman::config::UserConfig;
 use blobman::errors::Result;
-use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
 use blobman::notify::termcolor::TermcolorNotificationBackend;
-use clap::{Arg, ArgMatches, App, SubCommand};
+use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::{self, Write};
 use std::process;
+use tokio::runtime::Runtime;
 
-
-fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+fn inner(
+    matches: ArgMatches,
+    config: UserConfig,
+    nbe: &mut TermcolorNotificationBackend,
+) -> Result<i32> {
     if let Some(cat_m) = matches.subcommand_matches("cat") {
         let mut sess = blobman::Session::new(&config, nbe)?;
         let mut bstream = sess.open_blob(cat_m.value_of("NAME").unwrap())?;
@@ -23,7 +28,12 @@ fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificatio
     } else if let Some(fetch_m) = matches.subcommand_matches("fetch") {
         let mode = fetch_m.value_of("MODE").unwrap().parse()?;
         let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.ingest_from_url(mode, fetch_m.value_of("URL").unwrap(), fetch_m.value_of("name"))?;
+        let rt = Runtime::new()?;
+        rt.block_on(sess.ingest_from_url(
+            mode,
+            fetch_m.value_of("URL").unwrap(),
+            fetch_m.value_of("name"),
+        ))?;
         sess.rewrite_manifest()?;
     } else if let Some(provide_m) = matches.subcommand_matches("provide") {
         let mut sess = blobman::Session::new(&config, nbe)?;
@@ -35,54 +45,71 @@ fn inner(matches: ArgMatches, config: UserConfig, nbe: &mut TermcolorNotificatio
     Ok(0)
 }
 
-
 fn main() {
     let matches = App::new("blobman")
         .version("0.1.0")
         .about("Manage data files.")
-        .arg(Arg::with_name("chatter_level")
-             .long("chatter")
-             .short("c")
-             .value_name("LEVEL")
-             .help("How much chatter to print when running")
-             .possible_values(&["default", "minimal"])
-             .default_value("default"))
-        .subcommand(SubCommand::with_name("cat")
-                    .about("Stream blob data to standard output")
-                    .arg(Arg::with_name("NAME")
-                         .help("The name of the blob to stream")
-                         .required(true)
-                         .index(1)))
-        .subcommand(SubCommand::with_name("fetch")
-                    .about("Download and ingest a file")
-                    .arg(Arg::with_name("name")
-                         .long("name")
-                         .short("n")
-                         .value_name("NAME")
-                         .help("The name to use for the fetched blob [default: derived from URL]"))
-                    .arg(Arg::with_name("MODE")
-                         .long("mode")
-                         .short("m")
-                         .value_name("MODE")
-                         .help("How to act if the blob is already registered")
-                         .possible_values(blobman::IngestMode::stringifications())
-                         .default_value("update"))
-                    .arg(Arg::with_name("URL")
-                         .help("The URL to download")
-                         .required(true)
-                         .index(1)))
-        .subcommand(SubCommand::with_name("provide")
-                    .about("Make a file corresponding to the named blob")
-                    .arg(Arg::with_name("NAME")
-                         .help("The name of the blob to provide")
-                         .required(true)
-                         .index(1)))
+        .arg(
+            Arg::with_name("chatter_level")
+                .long("chatter")
+                .short("c")
+                .value_name("LEVEL")
+                .help("How much chatter to print when running")
+                .possible_values(&["default", "minimal"])
+                .default_value("default"),
+        )
+        .subcommand(
+            SubCommand::with_name("cat")
+                .about("Stream blob data to standard output")
+                .arg(
+                    Arg::with_name("NAME")
+                        .help("The name of the blob to stream")
+                        .required(true)
+                        .index(1),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("fetch")
+                .about("Download and ingest a file")
+                .arg(
+                    Arg::with_name("name")
+                        .long("name")
+                        .short("n")
+                        .value_name("NAME")
+                        .help("The name to use for the fetched blob [default: derived from URL]"),
+                )
+                .arg(
+                    Arg::with_name("MODE")
+                        .long("mode")
+                        .short("m")
+                        .value_name("MODE")
+                        .help("How to act if the blob is already registered")
+                        .possible_values(blobman::IngestMode::stringifications())
+                        .default_value("update"),
+                )
+                .arg(
+                    Arg::with_name("URL")
+                        .help("The URL to download")
+                        .required(true)
+                        .index(1),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("provide")
+                .about("Make a file corresponding to the named blob")
+                .arg(
+                    Arg::with_name("NAME")
+                        .help("The name of the blob to provide")
+                        .required(true)
+                        .index(1),
+                ),
+        )
         .get_matches();
 
     let chatter = match matches.value_of("chatter_level").unwrap() {
         "default" => ChatterLevel::Normal,
         "minimal" => ChatterLevel::Minimal,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     // Read in the configuration. We want to make it possible to decide
