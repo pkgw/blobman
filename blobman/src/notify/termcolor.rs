@@ -1,4 +1,4 @@
-// Copyright 2017 Peter William and collaborators
+// Copyright 2017-2019 Peter William and collaborators
 // Licensed under the MIT License.
 
 /*!
