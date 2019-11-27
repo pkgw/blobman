@@ -28,7 +28,10 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use errors::{Error, Result};
+use crate::{
+    errors::{Error, Result},
+    notify::NotificationBackend,
+};
 
 const APP_INFO: app_dirs::AppInfo = app_dirs::AppInfo {
     name: "blobman",
@@ -75,18 +78,18 @@ impl FromStr for IngestMode {
 }
 
 /// A session in which we do stuff.
-pub struct Session<'a, B: 'a + notify::NotificationBackend> {
+pub struct Session<'a> {
     config: &'a config::UserConfig,
-    nbe: &'a mut B,
+    nbe: &'a mut dyn notify::NotificationBackend,
     manifest: manifest::Manifest,
     manifest_path: Option<PathBuf>,
     manifest_modified: bool,
     http_client: reqwest::Client,
 }
 
-impl<'a, B: notify::NotificationBackend> Session<'a, B> {
+impl<'a> Session<'a> {
     /// Create and return a new Session.
-    pub fn new(config: &'a config::UserConfig, nbe: &'a mut B) -> Result<Self> {
+    pub fn new(config: &'a config::UserConfig, nbe: &'a mut dyn NotificationBackend) -> Result<Self> {
         let (manifest, manifest_path) = manifest::Manifest::find()?;
 
         Ok(Self {

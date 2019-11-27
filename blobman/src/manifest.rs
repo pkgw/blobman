@@ -155,11 +155,11 @@ impl Manifest {
     ///
     /// If a blob under the same name was already known, the old information
     /// is replaced.
-    pub fn insert_or_update<B: NotificationBackend>(
+    pub fn insert_or_update(
         &mut self,
         name: &str,
         binfo: BlobInfo,
-        nbe: &mut B,
+        nbe: &mut dyn NotificationBackend,
     ) {
         let e = self.blobs.entry(name.to_owned());
 

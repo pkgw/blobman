@@ -74,7 +74,7 @@ impl StorageInfo {
 
 impl UserConfig {
     /// Read the user-level configuration data.
-    pub fn open<B: NotificationBackend>(nbe: &mut B) -> Result<UserConfig> {
+    pub fn open(nbe: &mut dyn NotificationBackend) -> Result<UserConfig> {
         let mut cfg_path = app_root(AppDataType::UserConfig, &crate::APP_INFO)?;
         cfg_path.push("config.toml");
 
@@ -99,7 +99,7 @@ impl UserConfig {
     ///
     /// This is a bit of a hack; the main logic should probably be confined to
     /// the Session type.
-    pub fn get_storage<B: NotificationBackend>(&self, nbe: &mut B) -> Result<Box<dyn Storage>> {
+    pub fn get_storage(&self, nbe: &mut dyn NotificationBackend) -> Result<Box<dyn Storage>> {
         if self.storage.len() == 0 {
             return err_msg!("no storage backends defined in the config file");
         }

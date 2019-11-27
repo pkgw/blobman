@@ -5,7 +5,7 @@ use blobman::{
     config::UserConfig,
     errors::Result,
     notify::termcolor::TermcolorNotificationBackend,
-    notify::{BufferingNotificationBackend, ChatterLevel},
+    notify::{BufferingNotificationBackend, ChatterLevel, NotificationBackend},
 };
 use std::io::{self, Write};
 use std::process;
@@ -20,7 +20,7 @@ pub struct BlobmanCatOptions {
 }
 
 impl BlobmanCatOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
         let mut sess = blobman::Session::new(&config, nbe)?;
         let mut bstream = sess.open_blob(&self.name)?;
         let mut stdout = io::stdout();
@@ -52,7 +52,7 @@ pub struct BlobmanFetchOptions {
 }
 
 impl BlobmanFetchOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
         let mode = self.mode.parse()?;
         let mut sess = blobman::Session::new(&config, nbe)?;
         let rt = Runtime::new()?;
@@ -70,7 +70,7 @@ pub struct BlobmanProvideOptions {
 }
 
 impl BlobmanProvideOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
         let mut sess = blobman::Session::new(&config, nbe)?;
         sess.provide_blob(&self.name)?;
         Ok(0)
@@ -110,7 +110,7 @@ pub struct BlobmanCli {
 }
 
 impl BlobmanCli {
-    fn cli(self, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+    fn cli(self, config: UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
         match self.command {
             BlobmanSubcommand::Cat(opts) => opts.cli(&config, nbe),
             BlobmanSubcommand::Fetch(opts) => opts.cli(&config, nbe),
