@@ -1,10 +1,7 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-Backends for storing blobs.
-
-*/
+//! Backends for storing blobs.
 
 use async_trait::async_trait;
 use bytes::Bytes;

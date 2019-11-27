@@ -1,10 +1,7 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-Handling of the manifest of known blobs.
-
-*/
+//! Handling of the manifest of known blobs.
 
 use serde::{Serialize, Serializer};
 use serde_derive::{Deserialize, Serialize};

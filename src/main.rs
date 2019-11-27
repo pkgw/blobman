@@ -1,5 +1,7 @@
-// Copyright 2017 Peter Williams and collaborators
+// Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
+
+//! The entrypoint of the main "blobman" CLI command.
 
 use blobman::{
     config::UserConfig,

@@ -1,14 +1,11 @@
 // Copyright 2017-2019 Peter William and collaborators
 // Licensed under the MIT License.
 
-/*!
-A notification backend that sends colorized output to the terminal.
-
-This module is ripped off from the `status.termcolor` module used by the
-[Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
-engine. (Which the author of this module also wrote.)
-
-*/
+//! A notification backend that sends colorized output to the terminal.
+//!
+//! This module is ripped off from the `status.termcolor` module used by the
+//! [Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
+//! engine. (Which the author of this module also wrote.)
 
 // TODO: make this module a feature that can be disabled if the user doesn't
 // want to link with termcolor

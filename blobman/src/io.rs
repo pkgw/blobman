@@ -1,9 +1,7 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-I/O helpers.
-*/
+//! I/O helpers.
 
 use std::fs::{self, File};
 use std::io::ErrorKind as IoErrorKind;

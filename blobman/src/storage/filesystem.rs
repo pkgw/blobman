@@ -1,10 +1,7 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-Storing blobs on the filesystem.
-
-*/
+//! Storing blobs on the filesystem.
 
 use async_trait::async_trait;
 use mkstemp::TempFile;

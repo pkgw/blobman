@@ -1,14 +1,11 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-Helpers to tidy up hangling of SHA256 digests.
-
-This module is ripped off from the `errors` module used by the
-[Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
-engine. (Which the author of this module also wrote.)
-
-*/
+//! Helpers to tidy up hangling of SHA256 digests.
+//!
+//! This module is ripped off from the `errors` module used by the
+//! [Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
+//! engine. (Which the author of this module also wrote.)
 
 use serde;
 pub use sha2::Digest;

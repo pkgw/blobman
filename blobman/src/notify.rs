@@ -1,18 +1,15 @@
 // Copyright 2017-2019 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-/*!
-A framework for notifying users about what the framework is doing.
-
-This module provides a way for Blobman to notify the user about actions
-taken, problems, and so on. It is very narrowly targeted at the
-command-line use case.
-
-This module is ripped off from the `status` module used by the
-[Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
-engine. (Which the author of this module also wrote.)
-
-*/
+//! A framework for notifying users about what the framework is doing.
+//!
+//! This module provides a way for Blobman to notify the user about actions
+//! taken, problems, and so on. It is very narrowly targeted at the
+//! command-line use case.
+//!
+//! This module is ripped off from the `status` module used by the
+//! [Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
+//! engine. (Which the author of this module also wrote.)
 
 #[macro_use]
 pub mod termcolor;
