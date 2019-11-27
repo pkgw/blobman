@@ -1,112 +1,128 @@
 // Copyright 2017 Peter Williams and collaborators
 // Licensed under the MIT License.
 
-#[macro_use]
-extern crate blobman;
-extern crate clap;
-
-use blobman::config::UserConfig;
-use blobman::errors::Result;
-use blobman::notify::termcolor::TermcolorNotificationBackend;
-use blobman::notify::{BufferingNotificationBackend, ChatterLevel};
-use clap::{App, Arg, ArgMatches, SubCommand};
+use blobman::{
+    config::UserConfig,
+    errors::Result,
+    notify::termcolor::TermcolorNotificationBackend,
+    notify::{BufferingNotificationBackend, ChatterLevel},
+};
 use std::io::{self, Write};
 use std::process;
+use structopt::StructOpt;
 use tokio::runtime::Runtime;
 
-fn inner(
-    matches: ArgMatches,
-    config: UserConfig,
-    nbe: &mut TermcolorNotificationBackend,
-) -> Result<i32> {
-    if let Some(cat_m) = matches.subcommand_matches("cat") {
+/// StructOpt parameters for the "cat" subcommand.
+#[derive(Debug, StructOpt)]
+pub struct BlobmanCatOptions {
+    #[structopt(help = "The name of the blob to stream")]
+    name: String,
+}
+
+impl BlobmanCatOptions {
+    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
         let mut sess = blobman::Session::new(&config, nbe)?;
-        let mut bstream = sess.open_blob(cat_m.value_of("NAME").unwrap())?;
+        let mut bstream = sess.open_blob(&self.name)?;
         let mut stdout = io::stdout();
         io::copy(&mut bstream, &mut stdout)?;
         stdout.flush()?; // note: empirically, this is necessary
-    } else if let Some(fetch_m) = matches.subcommand_matches("fetch") {
-        let mode = fetch_m.value_of("MODE").unwrap().parse()?;
+        Ok(0)
+    }
+}
+
+/// StructOpt parameters for the "fetch" subcommand.
+#[derive(Debug, StructOpt)]
+pub struct BlobmanFetchOptions {
+    #[structopt(
+        short = "n",
+        help = "The name to use for the fetched blob [default: derived from URL]"
+    )]
+    name: Option<String>,
+
+    #[structopt(
+        short = "m",
+        help = "How to act if the blob is already registered",
+        possible_values = blobman::IngestMode::stringifications(),
+        default_value = "update",
+    )]
+    mode: String,
+
+    #[structopt(help = "The URL to download")]
+    url: String,
+}
+
+impl BlobmanFetchOptions {
+    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+        let mode = self.mode.parse()?;
         let mut sess = blobman::Session::new(&config, nbe)?;
         let rt = Runtime::new()?;
-        rt.block_on(sess.ingest_from_url(
-            mode,
-            fetch_m.value_of("URL").unwrap(),
-            fetch_m.value_of("name"),
-        ))?;
+        rt.block_on(sess.ingest_from_url(mode, &self.url, self.name.as_ref().map(|s| &**s)))?;
         sess.rewrite_manifest()?;
-    } else if let Some(provide_m) = matches.subcommand_matches("provide") {
-        let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.provide_blob(provide_m.value_of("NAME").unwrap())?;
-    } else {
-        return err_msg!("you must specify a subcommand; try \"blobman help\"");
+        Ok(0)
     }
+}
 
-    Ok(0)
+/// StructOpt parameters for the "provide" subcommand.
+#[derive(Debug, StructOpt)]
+pub struct BlobmanProvideOptions {
+    #[structopt(help = "The name of the blob to provide")]
+    name: String,
+}
+
+impl BlobmanProvideOptions {
+    fn cli(self, config: &UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+        let mut sess = blobman::Session::new(&config, nbe)?;
+        sess.provide_blob(&self.name)?;
+        Ok(0)
+    }
+}
+
+/// The main StructOpt type for dispatching subcommands.
+#[derive(Debug, StructOpt)]
+pub enum BlobmanSubcommand {
+    #[structopt(name = "cat")]
+    /// Stream blob data to standard output
+    Cat(BlobmanCatOptions),
+
+    #[structopt(name = "fetch")]
+    /// Download and ingest a file
+    Fetch(BlobmanFetchOptions),
+
+    #[structopt(name = "provide")]
+    /// Make a file corresponding to the named blob
+    Provide(BlobmanProvideOptions),
+}
+
+/// The main StructOpt argument dispatcher.
+#[derive(Debug, StructOpt)]
+#[structopt(name = "blobman", about = "Manage data files.")]
+pub struct BlobmanCli {
+    #[structopt(subcommand)]
+    command: BlobmanSubcommand,
+
+    #[structopt(
+        short = "c",
+        help = "How much chatter to print when running",
+        default_value = "default",
+        possible_values = &["default", "minimal"],
+    )]
+    chatter: String,
+}
+
+impl BlobmanCli {
+    fn cli(self, config: UserConfig, nbe: &mut TermcolorNotificationBackend) -> Result<i32> {
+        match self.command {
+            BlobmanSubcommand::Cat(opts) => opts.cli(&config, nbe),
+            BlobmanSubcommand::Fetch(opts) => opts.cli(&config, nbe),
+            BlobmanSubcommand::Provide(opts) => opts.cli(&config, nbe),
+        }
+    }
 }
 
 fn main() {
-    let matches = App::new("blobman")
-        .version("0.1.0")
-        .about("Manage data files.")
-        .arg(
-            Arg::with_name("chatter_level")
-                .long("chatter")
-                .short("c")
-                .value_name("LEVEL")
-                .help("How much chatter to print when running")
-                .possible_values(&["default", "minimal"])
-                .default_value("default"),
-        )
-        .subcommand(
-            SubCommand::with_name("cat")
-                .about("Stream blob data to standard output")
-                .arg(
-                    Arg::with_name("NAME")
-                        .help("The name of the blob to stream")
-                        .required(true)
-                        .index(1),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("fetch")
-                .about("Download and ingest a file")
-                .arg(
-                    Arg::with_name("name")
-                        .long("name")
-                        .short("n")
-                        .value_name("NAME")
-                        .help("The name to use for the fetched blob [default: derived from URL]"),
-                )
-                .arg(
-                    Arg::with_name("MODE")
-                        .long("mode")
-                        .short("m")
-                        .value_name("MODE")
-                        .help("How to act if the blob is already registered")
-                        .possible_values(blobman::IngestMode::stringifications())
-                        .default_value("update"),
-                )
-                .arg(
-                    Arg::with_name("URL")
-                        .help("The URL to download")
-                        .required(true)
-                        .index(1),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("provide")
-                .about("Make a file corresponding to the named blob")
-                .arg(
-                    Arg::with_name("NAME")
-                        .help("The name of the blob to provide")
-                        .required(true)
-                        .index(1),
-                ),
-        )
-        .get_matches();
+    let invocation = BlobmanCli::from_args();
 
-    let chatter = match matches.value_of("chatter_level").unwrap() {
+    let chatter = match invocation.chatter.as_ref() {
         "default" => ChatterLevel::Normal,
         "minimal" => ChatterLevel::Minimal,
         _ => unreachable!(),
@@ -116,7 +132,6 @@ fn main() {
     // whether to emit colorized output based on a configuration setting,
     // which means we can't emit notifications just yet; therefore we buffer
     // them.
-
     let mut temp_nbe = BufferingNotificationBackend::new();
 
     let config = match UserConfig::open(&mut temp_nbe) {
@@ -148,7 +163,7 @@ fn main() {
     // inner function ... all so that we can print out the word "error:" in
     // red. This code parallels various bits of the `error_chain` crate.
 
-    process::exit(match inner(matches, config, &mut nbe) {
+    process::exit(match invocation.cli(config, &mut nbe) {
         Ok(ret) => ret,
 
         Err(ref e) => {

@@ -21,5 +21,5 @@ doc = false
 
 [dependencies]
 blobman = { version = "0.1.0", path = "blobman" }
-clap = "^2.26"
+structopt = "^0.3"
 tokio = "^0.2.0-alpha.6"
