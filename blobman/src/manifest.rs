@@ -3,8 +3,7 @@
 
 //! Handling of the manifest of known blobs.
 
-use serde::{Serialize, Serializer};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::BTreeMap;
 use std::io::Read;

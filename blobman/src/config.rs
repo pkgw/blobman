@@ -4,7 +4,7 @@
 //! Configuration of the blobman framework.
 
 use app_dirs::{app_dir, app_root, AppDataType};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
