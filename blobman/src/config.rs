@@ -10,11 +10,13 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use toml;
 
-use crate::errors::Result;
-use crate::io;
-use crate::notify::NotificationBackend;
-use crate::storage::{filesystem, Storage};
-use crate::{bm_note, bm_warning, err_msg};
+use crate::{
+    bm_note, bm_warning, err_msg,
+    errors::Result,
+    io,
+    notify::NotificationBackend,
+    storage::{filesystem, Storage},
+};
 
 const DEFAULT_CONFIG: &'static str = r#"[[storage]]
 location = {type = "user_cache", loc = "blobman"}

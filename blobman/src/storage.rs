@@ -8,8 +8,10 @@ use bytes::Bytes;
 use std::io::Read;
 use std::path::PathBuf;
 
-use crate::digest::DigestData;
-use crate::errors::Result;
+use crate::{
+    digest::DigestData,
+    errors::Result,
+};
 
 pub mod filesystem;
 
