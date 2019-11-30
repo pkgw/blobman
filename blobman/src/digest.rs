@@ -54,7 +54,7 @@ pub fn create() -> DigestComputer {
 }
 
 /// A vector of bytes holding a cryptographic digest.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DigestData([u8; N_BYTES]);
 
 impl DigestData {

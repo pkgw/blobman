@@ -10,6 +10,7 @@
 #![recursion_limit = "1024"] // "error_chain can recurse deeply"
 #![deny(missing_docs)]
 
+pub mod blobs;
 pub mod config;
 pub mod digest;
 pub mod errors;
