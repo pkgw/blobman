@@ -7,6 +7,7 @@
 //! [Tectonic](https://github.com/tectonic-typesetting/tectonic) typesetting
 //! engine. (Which the author of this module also wrote.)
 
+use radix_trie::TrieKey;
 use serde;
 pub use sha2::Digest;
 pub use sha2::Sha256 as DigestComputer;
@@ -98,6 +99,12 @@ impl FromStr for DigestData {
         let mut result = DigestData::zeros();
         hex_to_bytes(s, &mut result.0)?;
         Ok(result)
+    }
+}
+
+impl TrieKey for DigestData {
+    fn encode_bytes(&self) -> Vec<u8> {
+        self.0.encode_bytes()
     }
 }
 

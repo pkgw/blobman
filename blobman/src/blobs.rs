@@ -3,7 +3,7 @@
 
 //! Low-level management of blobs.
 
-use std::collections::HashMap;
+use radix_trie::Trie;
 
 use crate::digest::DigestData;
 
@@ -21,17 +21,17 @@ pub struct BlobId(usize);
 ///
 /// The table is append-only: it never forgets about a digest/BlobId pair once
 /// it is learned.
-pub struct DigestTable<'a> {
+pub struct DigestTable {
     digests: Vec<DigestData>,
-    digest_to_id: HashMap<&'a DigestData, BlobId>,
+    digest_to_id: Trie<DigestData, BlobId>,
 }
 
-impl<'a> DigestTable<'a> {
+impl DigestTable {
     /// Create a new, empty DigestTable.
     pub fn new() -> Self {
         DigestTable {
             digests: Vec::new(),
-            digest_to_id: HashMap::new(),
+            digest_to_id: Trie::new(),
         }
     }
 
@@ -44,14 +44,14 @@ impl<'a> DigestTable<'a> {
     }
 
     /// Given DigestData, get a BlobId, possibly allocating a new one.
-    pub fn digest_to_id(&'a mut self, digest: &DigestData) -> BlobId {
+    pub fn digest_to_id(&mut self, digest: &DigestData) -> BlobId {
         if let Some(id) = self.digest_to_id.get(digest) {
             return *id;
         }
 
         let id = BlobId(self.digests.len());
         self.digests.push(digest.clone());
-        self.digest_to_id.insert(&self.digests[id.0], id);
+        self.digest_to_id.insert(self.digests[id.0], id);
         id
     }
 }

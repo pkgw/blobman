@@ -4,82 +4,29 @@
 //! Handling of the manifest of known blobs.
 
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::hash_map::{Entry, HashMap};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Component, PathBuf};
 use std::result::Result as StdResult;
 use toml;
 
 use crate::{
-    digest::DigestData,
+    blobs::DigestTable,
+    collection::{Collection, SerdeCollection},
+    ctry,
     errors::Result,
     io,
-    notify::NotificationBackend,
-    storage::{AsyncChunks, Storage},
-    bm_note,
-    ctry,
 };
 
 /// The basename used by manifest files.
 pub const MANIFEST_STEM: &'static str = ".blobs.toml";
 const PARENT_DIR: &'static str = "..";
 
-/// Information about a blob.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BlobInfo {
-    size: u64,
-    sha256: DigestData,
-    url: Option<String>,
-}
-
-impl BlobInfo {
-    /// Ingest a new blob and extract its properties.
-    ///
-    /// The newly-ingested blob is staged in the storage area *storage*. The
-    /// staging happens by reading asynchronously from *source*. Upon
-    /// successful completion we create a BlobInfo object summarizing the blob
-    /// contents.
-    pub async fn new_from_ingest(
-        source: Box<dyn AsyncChunks + Send>,
-        storage: &mut Box<dyn Storage>,
-    ) -> Result<Self> {
-        let (size, digest) = storage.ingest(source).await?;
-        Ok(Self {
-            size: size,
-            sha256: digest,
-            url: None,
-        })
-    }
-
-    /// Get the digest associated with this blob.
-    pub fn digest<'a>(&'a self) -> &'a DigestData {
-        &self.sha256
-    }
-
-    /// Set the URL associated with this object.
-    pub fn set_url(&mut self, url: &str) {
-        self.url = Some(url.to_owned());
-    }
-}
-
-/// A table of known blobs.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// A table of blob collections.
+#[derive(Debug)]
 pub struct Manifest {
-    #[serde(serialize_with = "serialize_map_sorted")]
-    blobs: HashMap<String, BlobInfo>,
-}
-
-/// From StackOverflow: https://stackoverflow.com/a/42723390/3760486
-fn serialize_map_sorted<S>(
-    value: &HashMap<String, BlobInfo>,
-    serializer: S,
-) -> StdResult<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let ordered: BTreeMap<_, _> = value.iter().collect();
-    ordered.serialize(serializer)
+    pub(crate) collections: HashMap<String, Collection>,
 }
 
 impl Manifest {
@@ -89,7 +36,7 @@ impl Manifest {
     /// try `../.blobs.toml`. We keep on trying higher-level directories until
     /// we reach a filesystem root. If no such file is found, the current
     /// manifest is implicitly empty.
-    pub fn find() -> Result<(Self, Option<PathBuf>)> {
+    pub fn find(dtable: &mut DigestTable) -> Result<(Self, Option<PathBuf>)> {
         let mut p = PathBuf::from(MANIFEST_STEM);
 
         loop {
@@ -97,7 +44,8 @@ impl Manifest {
                 // OK, we've got our hands on a manifest file.
                 let mut buf = Vec::<u8>::new();
                 f.read_to_end(&mut buf)?;
-                let manifest = toml::from_slice(&buf)?;
+                let manifest: SerdeManifest = toml::from_slice(&buf)?;
+                let manifest = manifest.into_runtime(dtable);
                 return Ok((manifest, Some(p)));
             }
 
@@ -130,7 +78,7 @@ impl Manifest {
                 // manifest is altered.
                 return Ok((
                     Self {
-                        blobs: HashMap::new(),
+                        collections: HashMap::new(),
                     },
                     None,
                 ));
@@ -142,35 +90,51 @@ impl Manifest {
         }
     }
 
-    /// Look up information for the named blob.
-    pub fn lookup<'a>(&'a self, name: &str) -> Option<&'a BlobInfo> {
-        self.blobs.get(name)
-    }
-
-    /// Register a new blob with the manifest.
+    /// Clone this object into a serializable version of itself.
     ///
-    /// If a blob under the same name was already known, the old information
-    /// is replaced.
-    pub fn insert_or_update(
-        &mut self,
-        name: &str,
-        binfo: BlobInfo,
-        nbe: &mut dyn NotificationBackend,
-    ) {
-        let e = self.blobs.entry(name.to_owned());
+    /// I'm not happy with this model since we shouldn't have to clone all of
+    /// our data, but the only way I can see to get one of these objects into
+    /// a Serde-friendly state without cloning would be to implement a *third*
+    /// variant of the struct, like SerdeManifest with borrows. That seems
+    /// like just too much.
+    pub(crate) fn clone_serde(&self, dtable: &DigestTable) -> SerdeManifest {
+        let collections = self
+            .collections
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone_serde(dtable)))
+            .collect();
 
-        match e {
-            Entry::Occupied(mut oe) => {
-                if oe.get() != &binfo {
-                    bm_note!(nbe, "updating entry for {}", name);
-                } else {
-                    bm_note!(nbe, "entry for {} is unchanged", name);
-                }
-                oe.insert(binfo);
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(binfo);
-            }
-        }
+        SerdeManifest { collections }
+    }
+}
+
+/// (De)serializable version of Manifest.
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct SerdeManifest {
+    #[serde(serialize_with = "serialize_map_sorted")]
+    collections: HashMap<String, SerdeCollection>,
+}
+
+/// From StackOverflow: https://stackoverflow.com/a/42723390/3760486
+fn serialize_map_sorted<S>(
+    value: &HashMap<String, SerdeCollection>,
+    serializer: S,
+) -> StdResult<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let ordered: BTreeMap<_, _> = value.iter().collect();
+    ordered.serialize(serializer)
+}
+
+impl SerdeManifest {
+    fn into_runtime(mut self, dtable: &mut DigestTable) -> Manifest {
+        let colls = self
+            .collections
+            .drain()
+            .map(|(k, v)| (k, v.into_runtime(dtable)))
+            .collect();
+
+        Manifest { collections: colls }
     }
 }

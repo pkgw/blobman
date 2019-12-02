@@ -65,7 +65,15 @@ macro_rules! ctry {
     }
 }
 
-/// Format an error message.
+/// Format an error message into an Error value.
+#[macro_export]
+macro_rules! err_msg_value {
+    ($( $fmt_args:expr ),*) => {
+        $crate::errors::ErrorKind::Msg(format!($( $fmt_args ),*))
+    }
+}
+
+/// Format an error message into an Err Result.
 ///
 /// This convenience macro expands into an Err(Error) object of kind
 /// ErrorKind::Msg, and a message formatted using the standard `format!`

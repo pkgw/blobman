@@ -23,6 +23,7 @@ doc = false
 blobman = { version = "0.1.0", path = "blobman" }
 structopt = "^0.3"
 tokio = "^0.2.0-alpha.6"
+toml = "^0.5"
 
 [dev-dependencies]
 assert_cmd = "^0.11"

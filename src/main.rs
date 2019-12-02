@@ -4,15 +4,17 @@
 //! The entrypoint of the main "blobman" CLI command.
 
 use blobman::{
+    collection::Collection,
     config::UserConfig,
     errors::Result,
     notify::termcolor::TermcolorNotificationBackend,
     notify::{BufferingNotificationBackend, ChatterLevel, NotificationBackend},
+    retrieval::url::UrlRetrieval,
 };
-use std::io::{self, Write};
 use std::process;
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
+use toml::{self, value::Table};
 
 /// StructOpt parameters for the "cat" subcommand.
 #[derive(Debug, StructOpt)]
@@ -22,12 +24,12 @@ pub struct BlobmanCatOptions {
 }
 
 impl BlobmanCatOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
-        let mut sess = blobman::Session::new(&config, nbe)?;
-        let mut bstream = sess.open_blob(&self.name)?;
-        let mut stdout = io::stdout();
-        io::copy(&mut bstream, &mut stdout)?;
-        stdout.flush()?; // note: empirically, this is necessary
+    fn cli(self, _config: &UserConfig, _nbe: &mut (dyn NotificationBackend + Send)) -> Result<i32> {
+        // let mut sess = blobman::Session::new(&config, nbe)?;
+        // let mut bstream = sess.open_blob(&self.name)?;
+        // let mut stdout = io::stdout();
+        // io::copy(&mut bstream, &mut stdout)?;
+        // stdout.flush()?; // note: empirically, this is necessary
         Ok(0)
     }
 }
@@ -54,11 +56,23 @@ pub struct BlobmanFetchOptions {
 }
 
 impl BlobmanFetchOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
-        let mode = self.mode.parse()?;
+    fn cli(self, config: &UserConfig, nbe: &mut (dyn NotificationBackend + Send)) -> Result<i32> {
+        // let mode = self.mode.parse()?;
         let mut sess = blobman::Session::new(&config, nbe)?;
+
+        if let None = sess.get_collection("www") {
+            let retr = UrlRetrieval::new();
+            let mut c = Collection::new("www", Box::new(retr));
+            c.set_keys(&["url"]);
+            sess.insert_collection(c);
+        }
+
+        let mut item_spec = Table::new();
+        item_spec.insert("url".to_owned(), toml::Value::String(self.url.clone()));
+
         let rt = Runtime::new()?;
-        rt.block_on(sess.ingest_from_url(mode, &self.url, self.name.as_ref().map(|s| &**s)))?;
+        rt.block_on(sess.insert_item("www", item_spec))?;
+
         sess.rewrite_manifest()?;
         Ok(0)
     }
@@ -72,9 +86,9 @@ pub struct BlobmanProvideOptions {
 }
 
 impl BlobmanProvideOptions {
-    fn cli(self, config: &UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
-        let mut sess = blobman::Session::new(&config, nbe)?;
-        sess.provide_blob(&self.name)?;
+    fn cli(self, _config: &UserConfig, _nbe: &mut (dyn NotificationBackend + Send)) -> Result<i32> {
+        // let mut sess = blobman::Session::new(&config, nbe)?;
+        // sess.provide_blob(&self.name)?;
         Ok(0)
     }
 }
@@ -112,7 +126,7 @@ pub struct BlobmanCli {
 }
 
 impl BlobmanCli {
-    fn cli(self, config: UserConfig, nbe: &mut dyn NotificationBackend) -> Result<i32> {
+    fn cli(self, config: UserConfig, nbe: &mut (dyn NotificationBackend + Send)) -> Result<i32> {
         match self.command {
             BlobmanSubcommand::Cat(opts) => opts.cli(&config, nbe),
             BlobmanSubcommand::Fetch(opts) => opts.cli(&config, nbe),
